@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "ocko.xp-taskbar",
+  "name": "Windows XP Taskbar",
+  "version": "1.0.0",
+  "author": "ocko",
+  "description": "Windows XP taskbar: start button, Quick Launch, window buttons, notification area. Selected by the windows-xp theme hook (omarchy/xp/bin/xp-mode).",
+  "kinds": [
+    "bar"
+  ],
+  "entryPoints": {
+    "bar": "Bar.qml"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.bar"
+  }
+}

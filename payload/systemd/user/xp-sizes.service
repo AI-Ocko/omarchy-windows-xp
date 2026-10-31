@@ -1,0 +1,6 @@
+[Unit]
+Description=Resize the Windows XP terminal font to Omarchy's text size
+
+[Service]
+Type=oneshot
+ExecStart=%h/.config/omarchy/xp/bin/xp-mode sizes

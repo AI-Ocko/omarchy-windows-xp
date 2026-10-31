@@ -1,0 +1,37 @@
+omarchy-windows-xp a67900698515 (2026-10-30)
+
+Built against: Omarchy 4.0.6-1, Hyprland v0.56.2 (efb5099), quickshell 0.3.2.r7.g2b4501a-1
+
+Stock Omarchy files each XP plugin copies, verified by sha256 (compat.json):
+  ocko.xp-agents: 3 files, omarchy 4.0.6-1
+  ocko.xp-audio: 2 files, omarchy 4.0.6-1
+  ocko.xp-bluetooth: 2 files, omarchy 4.0.6-1
+  ocko.xp-clock: 3 files, omarchy 4.0.6-1
+  ocko.xp-idle: 2 files, omarchy 4.0.6-1
+  ocko.xp-menu: 2 files, omarchy 4.0.6-1
+  ocko.xp-monitor: 2 files, omarchy 4.0.6-1
+  ocko.xp-network: 2 files, omarchy 4.0.6-1
+  ocko.xp-notifications: 3 files, omarchy 4.0.6-1
+  ocko.xp-osd: 2 files, omarchy 4.0.6-1
+  ocko.xp-polkit: 2 files, omarchy 4.0.6-1
+  ocko.xp-power: 2 files, omarchy 4.0.6-1
+  ocko.xp-taskbar: 2 files, omarchy 4.0.6-1
+  ocko.xp-tray: 2 files, omarchy 4.0.6-1
+  ocko.xp-weather: 3 files, omarchy 4.0.6-1
+
+xp-compat-test at export time:
+  ocko.xp-agents         ok
+  ocko.xp-audio          ok
+  ocko.xp-bluetooth      ok
+  ocko.xp-clock          ok
+  ocko.xp-idle           ok
+  ocko.xp-menu           ok
+  ocko.xp-monitor        ok
+  ocko.xp-network        ok
+  ocko.xp-notifications  ok
+  ocko.xp-osd            ok
+  ocko.xp-polkit         ok
+  ocko.xp-power          ok
+  ocko.xp-taskbar        ok
+  ocko.xp-tray           ok
+  ocko.xp-weather        ok

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "ocko.xp-weather",
+  "name": "Windows XP Weather",
+  "version": "1.0.0",
+  "author": "ocko",
+  "description": "omarchy.weather for the Windows XP notification area: the weather button with an XP Weather window. Enabled only while an XP theme is active (omarchy/xp/bin/xp-mode); the stock widget stays enabled for other bars.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Weather",
+    "description": "Weather pill with detail popup",
+    "category": "Info",
+    "allowMultiple": false,
+    "settingsForm": "weatherSettings"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.weather"
+  }
+}

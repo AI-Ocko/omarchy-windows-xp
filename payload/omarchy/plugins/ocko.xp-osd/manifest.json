@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "ocko.xp-osd",
+  "name": "Windows XP OSD",
+  "version": "1.0.0",
+  "author": "ocko",
+  "description": "omarchy.osd as a small Windows XP volume/brightness panel above the notification area. Enabled only while an XP theme is active (omarchy/xp/bin/xp-mode).",
+  "kinds": [
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "Osd.qml"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.osd"
+  }
+}

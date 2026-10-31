@@ -1,0 +1,165 @@
+# Windows XP (Royale) -- Omarchy shell surfaces.
+#
+# Replaces the generated shell.toml while this scheme is active. Colours are
+# sampled XP values from omarchy/xp/palette.md. XP chrome is opaque, so every
+# surface and border alpha is 1.0. The only alphas below 1.0 are overlays that
+# are not surfaces: full-screen scrims (0 -- XP never dims the desktop behind
+# a menu), control hover/selected tints, and the lock's text-selection tint.
+#
+# Readability constraint behind the dark popup card: bar flyouts draw their
+# text in [bar] text, stock Ui controls default to colors.toml foreground
+# (#C0C0C0), and the OSD sits on colors.toml background (#000000) using
+# [popups] text. All three must read on the same card, so it is dark with
+# white text. The XP-white surfaces are the ones that own their text colour:
+# [menu], [tooltip], [notifications], [polkit], [lock].
+
+[bar]
+# taskbar ramp, lower glass
+background       = "#2C55B1"
+background-alpha = 1.0
+text             = "#FFFFFF"
+# Modules calling attention to themselves: recording, dictation, updates.
+active           = "#FFFF00"
+scale-with-font  = true
+size-horizontal  = 26
+size-vertical    = 28
+
+[hyprland]
+# Shared border tokens = the active title-bar colour.
+active-border            = "#335EA8"
+active-border-foreground = "#335EA8"
+
+[controls]
+# Flat XP list rows: no idle fill, a 1px light-title border.
+normal-color        = "foreground"
+normal-fill-alpha   = 0.0
+normal-border       = "#70B1EB"
+normal-border-width = 1
+normal-border-alpha = 1.0
+
+hover-cursor-color        = "foreground"
+hover-cursor-fill-alpha   = 0.18
+hover-cursor-border       = "#70B1EB"
+hover-cursor-border-width = 1
+hover-cursor-border-alpha = 1.0
+
+focus-color        = "foreground"
+focus-fill-alpha   = 0.18
+focus-border       = "#FFFFFF"
+focus-border-width = 1
+focus-border-alpha = 1.0
+
+selected-color        = "foreground"
+selected-fill-alpha   = 0.28
+selected-border       = "#70B1EB"
+selected-border-width = 1
+selected-border-alpha = 1.0
+
+pressed-fill-alpha   = 0.36
+# Text selection inside fields: XP Highlight.
+selection-color      = "#335EA8"
+selection-fill-alpha = 1.0
+
+[spacing]
+scale = 1.0
+scale-with-font = true
+
+[font]
+# No base-size here, deliberately: the XP taskbar takes Omarchy's own text
+# size (the shell default 12, or the base-size `omarchy display text size`
+# writes to ~/.config/omarchy/shell.toml). A pin here would override that.
+
+[popups]
+# Bar flyouts and OSD card. Start menu left-column navy.
+background       = "#10377C"
+background-alpha = 1.0
+text             = "#FFFFFF"
+border           = "#335EA8"
+border-alpha     = 1.0
+border-width     = 1
+
+[tooltip]
+# XP InfoWindow / InfoText, 1px black border.
+background       = "#FFFFE1"
+background-alpha = 1.0
+text             = "#000000"
+border           = "#000000"
+border-alpha     = 1.0
+
+[notifications]
+# XP balloon tip.
+background       = "#FFFFE1"
+background-alpha = 1.0
+text             = "#000000"
+border           = "#000000"
+border-alpha     = 1.0
+border-width     = 1
+countdown        = "#335EA8"
+
+[launcher]
+# Dead config in Omarchy 4.0.6 (nothing reads it; [menu] styles the
+# launcher). Kept identical to [menu] in case a later version wires it up.
+background                = "#10377C"
+background-alpha          = 1.0
+text                      = "#FFFFFF"
+border                    = "#5373BF"
+border-alpha              = 1.0
+scrim                     = "#000000"
+scrim-alpha               = 0.0
+selected-background       = "#335EA8"
+selected-background-alpha = 1.0
+selected-text             = "#FFFFFF"
+selected-border           = "#335EA8"
+selected-border-alpha     = 1.0
+
+[menu]
+# Omarchy menu, power menu and launcher: the Start menu's program list,
+# with the XP Highlight on the selected row.
+background                = "#10377C"
+background-alpha          = 1.0
+text                      = "#FFFFFF"
+border                    = "#5373BF"
+border-alpha              = 1.0
+scrim                     = "#000000"
+scrim-alpha               = 0.0
+selected-background       = "#335EA8"
+selected-background-alpha = 1.0
+selected-text             = "#FFFFFF"
+selected-border           = "#335EA8"
+selected-border-alpha     = 1.0
+
+[polkit]
+# An XP dialog: window face, black text, title-coloured frame.
+background       = "#EBE9ED"
+background-alpha = 1.0
+text             = "#000000"
+text-error       = "#800000"
+border           = "#335EA8"
+border-error     = "#FF0000"
+border-alpha     = 1.0
+scrim            = "#000000"
+scrim-alpha      = 0.0
+accent           = "#335EA8"
+
+[lock]
+# The password field: a white XP edit box framed in the scheme's colours.
+background       = "#FFFFFF"
+background-alpha = 1.0
+text             = "#000000"
+placeholder      = "#808080"
+text-error       = "#800000"
+border           = "#335EA8"
+border-active    = "#335EA8"
+border-error     = "#FF0000"
+border-alpha     = 1.0
+selection        = "#335EA8"
+selection-alpha  = 0.45
+
+[image-picker]
+scrim                   = "#000040"
+scrim-alpha             = 0.6
+text                    = "#FFFFFF"
+selected-border         = "#335EA8"
+selected-border-alpha   = 1.0
+unselected-border       = "#FFFFFF"
+unselected-border-alpha = 0.3

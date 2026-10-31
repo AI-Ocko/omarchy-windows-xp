@@ -1,0 +1,73 @@
+#!/bin/bash
+# xp-screensaver [force]  Windows XP "3D Pipes" on every monitor
+# xp-screensaver stop     end the running one (any input does, via ocko.xp-idle)
+#
+# The idle clone ocko.xp-idle runs this instead of omarchy-launch-screensaver
+# while an XP theme is active. The hack is xscreensaver's OpenGL `pipes`, an
+# X11 (XWayland) client. Its WM_CLASS is ("pipes", "TopLevelShell") and
+# Hyprland's class is the second, Xt's generic shell class, so it is matched
+# by class TopLevelShell *and* title "Pipes: ..." (screenhack's fixed title):
+# omarchy/xp/hypr/late.lua makes it float, fullscreen and caption-less, and
+# ocko.xp-idle tracks it as a screensaver window (open/close, dismiss on input).
+#
+# This process owns the hacks: it lives until any one of them exits (closed,
+# crashed, or `xp-screensaver stop`), then stops the rest and shows the cursor
+# again. Without the hack installed it falls back to the stock screensaver.
+
+HACK=/usr/lib/xscreensaver/pipes
+# XP's 3D Pipes had no extra gadgetry. The default "fisheye" is the zoomed-in
+# view that fills the screen as XP's did; --no-fisheye looks much farther away.
+HACK_ARGS=(--factory 0)
+PIDFILE=${XDG_RUNTIME_DIR:-/tmp}/xp-screensaver.pid
+
+running_pid() {
+  local pid
+  read -r pid 2>/dev/null <"$PIDFILE" && kill -0 "$pid" 2>/dev/null &&
+    grep -qs xp-screensaver "/proc/$pid/cmdline" && echo "$pid"
+}
+
+if [[ ${1:-} == stop ]]; then
+  pid=$(running_pid) && kill "$pid"
+  exit 0
+fi
+
+[[ -x $HACK ]] || exec omarchy-launch-screensaver "$@"
+running_pid >/dev/null && exit 0
+if omarchy-toggle-enabled screensaver-off && [[ ${1:-} != force ]]; then
+  exit 1
+fi
+echo $$ >"$PIDFILE"
+
+hacks=()
+cleanup() {
+  trap - TERM INT HUP EXIT
+  kill "${hacks[@]}" "$events_pid" 2>/dev/null
+  hyprctl eval 'hl.config({ cursor = { invisible = false } })' >/dev/null 2>&1
+  rm -f "$PIDFILE"
+  exit 0
+}
+trap cleanup TERM INT HUP EXIT
+
+focused=$(omarchy-hyprland-monitor-focused)
+
+# Listen before spawning, as omarchy-launch-screensaver does: a new window maps
+# on whichever monitor is focused at that moment, so wait for each one to open
+# before focusing the next monitor.
+exec {events}< <(exec socat -U - "UNIX-CONNECT:$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock" 2>/dev/null)
+events_pid=$!
+
+for m in $(hyprctl monitors -j | jq -r '.[].name'); do
+  hyprctl dispatch "hl.dsp.focus({ monitor = \"$m\" })" >/dev/null
+  "$HACK" "${HACK_ARGS[@]}" >/dev/null 2>&1 &
+  hacks+=($!)
+  deadline=$((SECONDS + 5))
+  while ((SECONDS < deadline)) && IFS= read -r -t $((deadline - SECONDS)) -u "$events" line; do
+    [[ $line == openwindow\>\>*,TopLevelShell,Pipes:* ]] && break
+  done
+done
+kill "$events_pid" 2>/dev/null
+
+hyprctl dispatch "hl.dsp.focus({ monitor = \"$focused\" })" >/dev/null
+hyprctl eval 'hl.config({ cursor = { invisible = true } })' >/dev/null 2>&1
+
+wait -n "${hacks[@]}"

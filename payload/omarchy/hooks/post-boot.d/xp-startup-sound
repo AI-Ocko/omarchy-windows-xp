@@ -1,0 +1,8 @@
+#!/bin/bash
+# Windows XP startup sound, once per login. omarchy-hook runs post-boot hooks
+# once per Hyprland start (default/hypr/autostart.lua); the marker, keyed on
+# this Hyprland instance, makes a hand-run or repeated hook a no-op. xp-sound
+# itself does nothing outside an XP theme or on a muted sink.
+marker=${XDG_RUNTIME_DIR:-/tmp}/xp-startup-sound.${HYPRLAND_INSTANCE_SIGNATURE:-none}
+(set -o noclobber; : >"$marker") 2>/dev/null || exit 0
+exec "$HOME/.config/omarchy/xp/bin/xp-sound" startup

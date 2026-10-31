@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "ocko.xp-network",
+  "name": "Windows XP Network",
+  "version": "1.0.0",
+  "author": "ocko",
+  "description": "omarchy.network for the Windows XP notification area: Local Area Connection Status, Details, Properties and the wireless network window. Enabled only while an XP theme is active (omarchy/xp/bin/xp-mode); the stock widget stays enabled for other bars.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Network",
+    "description": "Wi-Fi list and connection state",
+    "category": "Network",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.network"
+  }
+}

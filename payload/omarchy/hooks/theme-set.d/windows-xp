@@ -1,0 +1,9 @@
+#!/bin/bash
+# Windows XP on for windows-xp / windows-xp-*, off (a fast no-op if XP was never
+# on) for every other theme. omarchy-hook runs this as `bash <file> <slug>`,
+# with stdout discarded; the logic and its error log live in xp-mode.
+case $1 in
+  windows-xp | windows-xp-*) mode=on ;;
+  *) mode=off ;;
+esac
+exec "$HOME/.config/omarchy/xp/bin/xp-mode" "$mode"

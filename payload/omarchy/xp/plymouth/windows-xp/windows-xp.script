@@ -1,0 +1,209 @@
+# Windows XP Plymouth theme (omarchy/xp, installed by omarchy/xp/bin/xp-boot).
+#
+# Every image here is rendered by `xp-boot` from the original XP bitmaps at
+# twice their size (pixel-doubled), so the coordinates below are the 1x XP
+# coordinates times 2. Keep them in step with the layout in xp-boot.
+#
+# Safety: if anything here fails, the disk prompt still works. Plymouth keeps
+# reading keys whatever the script draws, Esc switches to the text "details"
+# splash, and Limine's snapshot entries boot older images with the stock theme.
+
+W = Window.GetWidth();
+H = Window.GetHeight();
+mode = Plymouth.GetMode();
+
+fun background(r, g, b) {
+  Window.SetBackgroundTopColor(r, g, b);
+  Window.SetBackgroundBottomColor(r, g, b);
+}
+
+# ---- Boot: ntoskrnl bitmap 1 with bitmap 8 scrolling in its trough --------
+
+boot.image = Image("boot.png");                       # 1280x960
+boot.x = Math.Int(W / 2 - boot.image.GetWidth() / 2);
+boot.y = Math.Int(H / 2 - boot.image.GetHeight() / 2);
+boot.sprite = Sprite(boot.image);
+boot.sprite.SetPosition(boot.x, boot.y, 1);
+boot.sprite.SetOpacity(0);
+
+# Trough interior: x 257..378 (122 px), segment row y 354, at 1x.
+bar.left = boot.x + 514;
+bar.width = 244;
+bar.y = boot.y + 708;
+bar.image = Image("segment.png");                     # 44x18: three blue blocks
+bar.sprite = Sprite();
+bar.sprite.SetPosition(bar.left, bar.y, 2);
+bar.pos = -44;
+bar.tick = 0;
+
+fun show_boot(on) {
+  boot.sprite.SetOpacity(on);
+  bar.sprite.SetOpacity(on);
+}
+
+# XP moves the blocks 2 px (1x) at a time and wraps once they have left the
+# trough; this refresh runs at 50 Hz, so one step per two calls is ~3 s a lap.
+fun step_bar() {
+  bar.tick++;
+  if (bar.tick % 2) return;
+  bar.pos += 4;
+  if (bar.pos >= bar.width) bar.pos = -44;
+  left = bar.pos;
+  if (left < 0) left = 0;
+  right = bar.pos + 44;
+  if (right > bar.width) right = bar.width;
+  if (right <= left) {
+    bar.sprite.SetOpacity(0);
+    return;
+  }
+  bar.sprite.SetImage(bar.image.Crop(left - bar.pos, 0, right - left, 18));
+  bar.sprite.SetX(bar.left + left);
+  bar.sprite.SetOpacity(1);
+}
+
+# ---- Disk prompt: msgina's "Log On to Windows" dialog ---------------------
+
+logon.image = Image("logon.png");                     # 846x488
+logon.x = Math.Int(W / 2 - logon.image.GetWidth() / 2);
+logon.y = Math.Int(H / 2 - logon.image.GetHeight() / 2);
+logon.sprite = Sprite(logon.image);
+logon.sprite.SetPosition(logon.x, logon.y, 10);
+logon.sprite.SetOpacity(0);
+
+prompt.sprite = Sprite();
+prompt.sprite.SetPosition(logon.x + 34, logon.y + 226, 11);
+
+bullet.image = Image("bullet.png");                   # 10x10
+bullet.sprites = [];
+bullet.max = 33;                                      # what fits the 245 px field
+caret.sprite = Sprite(Image("caret.png"));            # 2x26
+caret.sprite.SetOpacity(0);
+caret.tick = 0;
+global.asking = 0;
+
+# Password field interior starts at window (137, 165) at 1x.
+fun field_x(n) { return logon.x + 274 + n * 14; }
+
+fun show_logon(on) {
+  logon.sprite.SetOpacity(on);
+  prompt.sprite.SetOpacity(on);
+  caret.sprite.SetOpacity(on);
+  if (!on) {
+    for (i = 0; bullet.sprites[i]; i++) bullet.sprites[i].SetOpacity(0);
+  }
+}
+
+fun display_password_callback(text, bullets) {
+  global.asking = 1;
+  show_boot(0);
+  background(0.0, 0.306, 0.596);                      # Luna "Background" #004E98
+  show_logon(1);
+  # Plymouth's own prompt (e.g. the volume being unlocked), kept visible.
+  prompt.sprite.SetImage(Image.Text(text, 0, 0, 0));
+  n = bullets;
+  if (n > bullet.max) n = bullet.max;
+  for (i = 0; i < n; i++) {
+    if (!bullet.sprites[i]) {
+      bullet.sprites[i] = Sprite(bullet.image);
+      bullet.sprites[i].SetPosition(field_x(i), logon.y + 344, 12);
+    }
+    bullet.sprites[i].SetOpacity(1);
+  }
+  for (i = n; bullet.sprites[i]; i++) bullet.sprites[i].SetOpacity(0);
+  caret.sprite.SetPosition(field_x(n) + 1, logon.y + 338, 12);
+}
+
+fun display_normal_callback() {
+  if (global.asking) {
+    global.asking = 0;
+    show_logon(0);
+  }
+  if (mode == "boot" || mode == "resume" || mode == "updates" || mode == "system-upgrade") {
+    background(0, 0, 0);
+    show_boot(1);
+  }
+}
+
+Plymouth.SetDisplayPasswordFunction(display_password_callback);
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+
+# Boot messages (fsck and the like): small grey text, top left, as XP never
+# showed any.
+message.sprite = Sprite();
+message.sprite.SetPosition(10, 10, 20);
+fun display_message_callback(text) {
+  message.sprite.SetImage(Image.Text(text, 0.6, 0.6, 0.6));
+  message.sprite.SetOpacity(1);
+}
+fun hide_message_callback(text) { message.sprite.SetOpacity(0); }
+Plymouth.SetDisplayMessageFunction(display_message_callback);
+Plymouth.SetHideMessageFunction(hide_message_callback);
+
+# ---- Shutdown / reboot: logonui's "Windows is shutting down..." screen ----
+
+fun band(file, y, h) {
+  s = Sprite(Image(file).Scale(W, h));
+  s.SetPosition(0, y, 1);
+  return s;
+}
+
+fun show_shutdown() {
+  background(0.353, 0.494, 0.863);                    # #5A7EDC
+  bh = Math.Int(H / 8);
+  global.down.top = band("band.png", 0, bh);           # #003399
+  global.down.bottom = band("band.png", H - bh, bh);
+  global.down.topline = band("line-top.png", bh, 4);   # logonui 125, light blue
+  global.down.botline = band("line-bottom.png", H - bh - 6, 6);   # logonui 126, orange
+  global.down.glow = Sprite(Image("glow.png"));        # logonui 100
+  global.down.glow.SetPosition(0, bh + 4, 2);
+  logo = Image("logo.png");                            # logonui 123
+  global.down.logo = Sprite(logo);
+  global.down.logo.SetPosition(Math.Int(W / 2 - logo.GetWidth() - 40), Math.Int(H / 2 - logo.GetHeight() / 2), 3);
+  divider = Image("divider.png");                      # logonui 124
+  global.down.divider = Sprite(divider);
+  global.down.divider.SetPosition(Math.Int(W / 2), Math.Int(H / 2 - divider.GetHeight() / 2), 3);
+  text = Image("shutting-down.png");
+  global.down.text = Sprite(text);
+  global.down.text.SetPosition(Math.Int(W / 2 + 40), Math.Int(H / 2 - text.GetHeight() / 2), 3);
+}
+
+# Only for a power-off: black, with ntoskrnl bitmap 3 in orange.
+fun show_safe_to_turn_off() {
+  background(0, 0, 0);
+  global.down.top.SetOpacity(0);
+  global.down.bottom.SetOpacity(0);
+  global.down.topline.SetOpacity(0);
+  global.down.botline.SetOpacity(0);
+  global.down.glow.SetOpacity(0);
+  global.down.logo.SetOpacity(0);
+  global.down.divider.SetOpacity(0);
+  global.down.text.SetOpacity(0);
+  safe = Image("safe-to-turn-off.png");
+  global.down.safe = Sprite(safe);
+  global.down.safe.SetPosition(Math.Int(W / 2 - safe.GetWidth() / 2), Math.Int(H / 2 - safe.GetHeight() / 2), 4);
+}
+
+global.frames = 0;
+fun refresh_callback() {
+  global.frames++;
+  if (mode == "shutdown" || mode == "reboot") {
+    # Plymouth cannot know the last frame before power-off, so the "safe"
+    # screen follows after 1.5 s of "shutting down".
+    if (mode == "shutdown" && global.frames == 75) show_safe_to_turn_off();
+    return;
+  }
+  if (global.asking) {
+    caret.tick++;
+    if (caret.tick % 25 == 0) caret.sprite.SetOpacity(Math.Int(caret.tick / 25) % 2 == 0);
+    return;
+  }
+  step_bar();
+}
+Plymouth.SetRefreshFunction(refresh_callback);
+
+if (mode == "shutdown" || mode == "reboot") {
+  show_shutdown();
+} else {
+  background(0, 0, 0);
+  show_boot(1);
+}

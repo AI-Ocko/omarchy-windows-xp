@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "ocko.xp-idle",
+  "name": "Windows XP screensaver",
+  "version": "1.0.0",
+  "author": "ocko",
+  "description": "omarchy.idle that runs the Windows XP 3D Pipes screensaver (omarchy/xp/bin/xp-screensaver) while an XP theme is active and the stock one otherwise. Enabled only while an XP theme is active (omarchy/xp/bin/xp-mode).",
+  "kinds": [
+    "service"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.idle"
+  }
+}

@@ -1,0 +1,212 @@
+#!/bin/bash
+# xp-taskbar-art -- derive the XP taskbar's PNGs from the msstyles bitmaps that
+# fetch-assets.sh extracted. Run by fetch-assets.sh; safe to rerun (rewrites
+# only what changed). Output is git-ignored like every other asset.
+#
+#   assets/graphics/taskbar/<theme slug>/
+#     start-{0,1,2}.png   Start::Button frames: normal, hot, pressed
+#     task-{0..5}.png     TaskBand::Toolbar.Button frames: normal, hot,
+#                         pressed, disabled, checked, hot+checked
+#     taskbar.png         TaskBar.BackgroundBottom
+#     tray.png            TrayNotifyHoriz::TrayNotify.Background
+#   assets/graphics/taskbar/flag.png   explorer.exe bitmap 143 (start flag)
+#
+# Start menu (Task 7), per slug, from the [StartPanel.*] / [StartMenu::*]
+# parts of the same msstyles:
+#     sm-user.png        StartUserPanel (header band)
+#     sm-tile.png        UserTileBackground (frame around the user picture)
+#     sm-mfu.png         StartPanelMFUBackground (left column)
+#     sm-progsep.png     StartProgramsSeparator
+#     sm-more.png        StartPanelMoreProgBackground (All Programs strip)
+#     sm-arrow-{0,1}.png StartPanelMoreProgArrow, normal / hot
+#     sm-places.png      StartPanelPlacesBackground (right column)
+#     sm-placesep.png    StartPlacesSeparator
+#     sm-logoff.png      StartPanelLogoffBackground (footer)
+#     sm-lbtn-{0,1}.png  StartPanelLogoffButtons, normal / hot (3 x 24 px:
+#                        disconnect, log off, turn off)
+#     sm-group.png       StartGroupBackground (All Programs flyout)
+#     sm-groupbtn-{0,1,2}.png StartGroupToolbarButton frames
+#     sm-groupsep.png    StartGroupSeperator
+#   and once, from msgina.dll (the Log Off / Turn Off dialogs):
+#     dlg-bg.png         bitmap 20142, dlg-flag.png 20143,
+#     dlg-btn-{0..9}.png bitmap 20150 frames (turn off n/pressed/hot, stand by
+#                        hot/pressed/n, restart n/pressed/hot, stand by disabled)
+#   and from shell32.dll bitmap 14356 (the Log Off Windows dialog):
+#     dlg-switch-{0,1,2}.png / dlg-logoff-{0,1,2}.png  normal / pressed / hot
+#
+# XP dialogs (Task 8, omarchy/xp/qml), per slug: win-ming / win-maxg caption
+# glyphs, balloon-close, progress-track/-chunk, groupbox, pane-{special,
+# normal}-{head,bg} (Explorer task pane), header (list view), radio, and the
+# vertical scrollbar (scroll-arrow / -glyph / -thumb / -shaft).
+#
+# Icons: every shell32.dll and user32.dll icon group at 16/32/48 px as
+# assets/graphics/{shell32,user32}/<size>/<resource id>.png.
+#
+# Transparency keys come from each part's INI section: #FF00FF for the start
+# and task buttons (and every Transparent=True start-panel part),
+# TransparentColor = 255 0 0 for the tray and the StartMenu::* parts.
+set -euo pipefail
+
+G=$(dirname "$(readlink -f "$0")")/../assets/graphics
+OUT=$G/taskbar
+declare -A SRC=(
+  [windows-xp]=luna/BITMAP/BLUE
+  [windows-xp-olive]=luna/BITMAP/HOMESTEAD
+  [windows-xp-silver]=luna/BITMAP/METALLIC
+  [windows-xp-royale]=royale/BITMAP/ROYALE
+  [windows-xp-zune]=zune/BITMAP/DEFAULT
+)
+
+# frames <bmp> <count> <key|-> <prefix>: split vertically, key out one colour
+frames() {
+  local h
+  h=$(($(magick identify -format '%h' "$1") / $2))
+  local key=(); [[ $3 != - ]] && key=(-fill none -opaque "$3")
+  magick "$1" -alpha set "${key[@]}" -crop "x$h" +repage "PNG32:$4-%d.png"
+}
+
+mkdir -p "$OUT"
+magick "$G/explorer/BITMAP/143.bmp" "PNG32:$OUT/flag.png"
+for slug in "${!SRC[@]}"; do
+  d=$OUT/$slug p=$G/${SRC[$slug]}
+  mkdir -p "$d"
+  frames "${p}_STARTBUTTON_BMP.bmp" 3 '#FF00FF' "$d/start"
+  frames "${p}_TASKBANDBUTTON_BMP.bmp" 6 '#FF00FF' "$d/task"
+  magick "${p}_TASKBARBACKGROUND_BMP.bmp" "PNG32:$d/taskbar.png"
+  magick "${p}_TASKBARTRAY_BMP.bmp" -alpha set -fill none -opaque '#FF0000' "PNG32:$d/tray.png"
+  # Start menu
+  key() { magick "${p}_$1_BMP.bmp" -alpha set -fill none -opaque "$2" "PNG32:$d/$3.png"; }
+  key STARTUSERPANEL '#FF00FF' sm-user
+  key USERTILEBACKGROUND '#FF00FF' sm-tile
+  key STARTPANELMFUBACKGROUND '#FF00FF' sm-mfu
+  key STARTPROGRAMSSEPARATOR '#FF00FF' sm-progsep
+  key STARTPANELMOREPROGBACKGROUND '#FF00FF' sm-more
+  key STARTPANELMOREPROGARROW '#FF00FF' sm-arrow-0
+  key STARTPANELMOREPROGARROWHOT '#FF00FF' sm-arrow-1
+  key STARTPANELPLACESBACKGROUND '#FF00FF' sm-places
+  key STARTPLACESSEPARATOR '#FF00FF' sm-placesep
+  key STARTPANELLOGOFFBACKGROUND '#FF00FF' sm-logoff
+  key STARTPANELLOGOFFBUTTONS '#FF00FF' sm-lbtn-0
+  key STARTPANELLOGOFFBUTTONSHOT '#FF00FF' sm-lbtn-1
+  key STARTGROUPBACKGROUND '#FF0000' sm-group
+  key STARTGROUPSEPERATOR '#FF0000' sm-groupsep
+  frames "${p}_STARTGROUPTOOLBARBUTTON_BMP.bmp" 3 '#FF0000' "$d/sm-groupbtn"
+  # Run dialog chrome: Window.* frame parts, Button.Pushbutton, the combo
+  frames "${p}_FRAMECAPTION_BMP.bmp" 2 '#FF00FF' "$d/win-cap"
+  frames "${p}_FRAMELEFT_BMP.bmp" 2 - "$d/win-left"
+  frames "${p}_FRAMERIGHT_BMP.bmp" 2 - "$d/win-right"
+  frames "${p}_FRAMEBOTTOM_BMP.bmp" 2 - "$d/win-bottom"
+  frames "${p}_CLOSEBUTTON_BMP.bmp" 8 '#FF00FF' "$d/win-close"
+  frames "${p}_CLOSEGLYPH_BMP.bmp" 8 '#FF00FF' "$d/win-closeg"
+  frames "${p}_CAPTIONBUTTON_BMP.bmp" 8 '#FF00FF' "$d/win-help"
+  frames "${p}_HELPGLYPH_BMP.bmp" 8 '#FF00FF' "$d/win-helpg"
+  frames "${p}_BUTTON_BMP.bmp" 5 '#FF00FF' "$d/btn"
+  frames "${p}_COMBOBUTTON_BMP.bmp" 4 - "$d/combo"
+  frames "${p}_COMBOBUTTONGLYPH_BMP.bmp" 4 '#FF00FF' "$d/combog"
+  # Task 8 dialogs (omarchy/xp/qml): caption glyphs, balloon close, progress,
+  # group box, the Explorer task pane, list header, radio, vertical scrollbar.
+  frames "${p}_MINIMIZEGLYPH_BMP.bmp" 8 '#FF00FF' "$d/win-ming"
+  frames "${p}_MAXIMIZEGLYPH_BMP.bmp" 8 '#FF00FF' "$d/win-maxg"
+  frames "${p}_RESTOREGLYPH_BMP.bmp" 8 '#FF00FF' "$d/win-restg"
+  # Notification-area chevron, [TrayNotifyHoriz(Open)::Button]: normal, hot, pressed
+  frames "${p}_TRAYCHEVRONHORIZONTAL_BMP.bmp" 3 '#FF00FF' "$d/chevron"
+  frames "${p}_TRAYCHEVRONHORIZONTALOPEN_BMP.bmp" 3 '#FF00FF' "$d/chevron-open"
+  frames "${p}_BALLOONCLOSE_BMP.bmp" 3 - "$d/balloon-close"
+  magick "${p}_PROGRESSTRACK_BMP.bmp" "PNG32:$d/progress-track.png"
+  magick "${p}_PROGRESSCHUNK_BMP.bmp" "PNG32:$d/progress-chunk.png"
+  key GROUPBOX '#FF00FF' groupbox
+  key SPECIALGROUPHEAD '#FF00FF' pane-special-head
+  key NORMALGROUPHEAD '#FF00FF' pane-normal-head
+  magick "${p}_SPECIALGROUPBACKGROUND_BMP.bmp" "PNG32:$d/pane-special-bg.png"
+  magick "${p}_NORMALGROUPBACKGROUND_BMP.bmp" "PNG32:$d/pane-normal-bg.png"
+  frames "${p}_LISTVIEWHEADER_BMP.bmp" 5 '#FF0000' "$d/header"
+  frames "${p}_RADIOBUTTON13_BMP.bmp" 8 - "$d/radio"
+  frames "${p}_SCROLLARROWS_BMP.bmp" 16 - "$d/scroll-arrow"
+  frames "${p}_SCROLLARROWGLYPHS_BMP.bmp" 16 '#FF00FF' "$d/scroll-glyph"
+  frames "${p}_SCROLLTHUMBVERTICAL_BMP.bmp" 4 - "$d/scroll-thumb"
+  frames "${p}_SCROLLSHAFTVERTICAL_BMP.bmp" 4 - "$d/scroll-shaft"
+  # Tray pop-ups (omarchy/xp/qml XpTrackbar / XpCheckBox / XpTabs), 96-dpi
+  # (13 px) variants like the radio. Thumbs: 5 frames, normal, hot, pressed,
+  # focused, disabled; only the pointer-shaped ones declare a transparent
+  # colour (242 241 231) in every scheme's INI.
+  frames "${p}_TRACKBARHORIZONTAL_BMP.bmp" 5 - "$d/trk-thumb-h"
+  frames "${p}_TRACKBARVERTICAL_BMP.bmp" 5 - "$d/trk-thumb-v"
+  frames "${p}_TRACKBARDOWN13_BMP.bmp" 5 '#F2F1E7' "$d/trk-thumb-down"
+  frames "${p}_TRACKBARUP13_BMP.bmp" 5 '#F2F1E7' "$d/trk-thumb-up"
+  frames "${p}_TRACKBARLEFT13_BMP.bmp" 5 '#F2F1E7' "$d/trk-thumb-left"
+  frames "${p}_TRACKBARRIGHT13_BMP.bmp" 5 '#F2F1E7' "$d/trk-thumb-right"
+  magick "${p}_SLIDERTRACK_BMP.bmp" "PNG32:$d/trk-track.png"
+  # [Button.CheckBox]: 12 frames, unchecked / checked / mixed x normal, hot,
+  # pressed, disabled. Has its own alpha.
+  frames "${p}_CHECKBOX13_BMP.bmp" 12 - "$d/check"
+  # [Spin.Up] / [Spin.Down] (the clock's year box): 4 frames, normal, hot,
+  # pressed, disabled; SizingMargins 4; glyphs keyed on magenta.
+  frames "${p}_SPINBUTTONBACKGROUNDUP_BMP.bmp" 4 - "$d/spin-up"
+  frames "${p}_SPINBUTTONBACKGROUNDDOWN_BMP.bmp" 4 - "$d/spin-down"
+  frames "${p}_SPINUPGLYPH_BMP.bmp" 4 '#FF00FF' "$d/spin-upg"
+  frames "${p}_SPINDOWNGLYPH_BMP.bmp" 4 '#FF00FF' "$d/spin-downg"
+  # [Tab.*]: 5 frames, normal, hot, selected, disabled, focused; the
+  # TopTabItem* variants are the selected tab, drawn 2 px taller.
+  for t in "" LEFT RIGHT BOTH TOP TOPLEFT TOPRIGHT TOPBOTH; do
+    frames "${p}_TABITEM${t}_BMP.bmp" 5 - "$d/tab${t:+-${t,,}}"
+  done
+  magick "${p}_TABPANEEDGE_BMP.bmp" "PNG32:$d/tab-pane.png"
+done
+M=$G/msgina/BITMAP
+magick "$M/20142.bmp" "PNG32:$OUT/dlg-bg.png"
+magick "$M/20143.bmp" -alpha set -fill none -opaque '#FF00FF' "PNG32:$OUT/dlg-flag.png"
+frames "$M/20150.bmp" 10 '#FF00FF' "$OUT/dlg-btn"
+# Log Off Windows dialog buttons: shell32 bitmap 14356, six 32 px frames:
+# Switch User normal/pressed/hot, then Log Off normal/pressed/hot.
+rm -f "$OUT"/dlg-switch-*.png "$OUT"/dlg-logoff-*.png
+magick "$G/shell32-bmp/BITMAP/14356.bmp" -alpha set -fill none -opaque '#FF00FF' -crop x32 +repage "PNG32:$OUT/dlg-lo-%d.png"
+for i in 0 1 2; do mv "$OUT/dlg-lo-$i.png" "$OUT/dlg-switch-$i.png"; mv "$OUT/dlg-lo-$((i + 3)).png" "$OUT/dlg-logoff-$i.png"; done
+echo "taskbar art: $(find "$OUT" -name '*.png' | wc -l) files in $OUT"
+
+# shell32 / user32 icon groups -> PNG, assets/graphics/{shell32,user32}/<size>/<id>.png
+# (the .ico trees are the sha-pinned fetch outputs; these are derived).
+# The rest are the notification-area icons the XP taskbar maps tray glyphs to.
+for lib in shell32 user32 stobject netshell wuauclt mmsys desk powercfg agentsvr fsquirt timedate sndvol32 input msctf xpsp2res; do
+  for size in 16 32 48; do
+    src=$G/$lib-ico/$size dst=$G/$lib/$size
+    [[ -d $src ]] || continue
+    mkdir -p "$dst"
+    for ico in "$src"/*.ico; do
+      png=$dst/$(basename "$ico" .ico).png
+      [[ $png -nt $ico ]] || magick "$ico" -define png:exclude-chunks=date,time "PNG32:$png"
+    done
+  done
+  echo "$lib icons: $(find "$G/$lib" -name '*.png' | wc -l) PNGs in $G/$lib"
+done
+
+# Weather has no XP icon; ocko chose netshell's Internet storm cloud (1111,
+# 32 px only) without its lightning bolt and network plug for every
+# non-storm condition. The cloud is the top 16 rows; the one bolt pixel
+# left on its bottom edge is the only non-grey ink there (blue well below red).
+cloud=$G/netshell/32/1111-cloud.png
+if [[ -f $G/netshell/32/1111.png && ! $cloud -nt $G/netshell/32/1111.png ]]; then
+  magick "$G/netshell/32/1111.png" -crop 32x16+0+0 +repage -channel A -fx 'r-b>0.12 ? 0 : a' +channel \
+    -background none -gravity center -extent 32x32 -define png:exclude-chunks=date,time "PNG32:$cloud"
+fi
+
+# The Time Zone tab's world map (timedate.cpl BITMAP 50, fetched as
+# graphics/timedate-bmp) is palette-coded, one colour per zone with land and
+# sea apart; timedate.cpl painted it as sea and land. Sea colours are the ones
+# that reach the map's top or bottom edge (no land does). The
+# blue and green are XP's as remembered, not read from the cpl.
+map=$G/timedate-bmp/BITMAP/50.bmp tzmap=$OUT/tzmap.png
+if [[ -f $map && ! $tzmap -nt $map ]]; then
+  row() { magick "$map" -gravity "$1" -crop x1+0+0 +repage -unique-colors -depth 8 txt:- | grep -o '#[0-9A-F]\{6\}' | sort -u; }
+  sea=() mark='#FF00FE'
+  for c in $(sort -u <(row north) <(row south)); do sea+=(-fill "$mark" -opaque "$c"); done
+  magick "$map" -depth 8 "${sea[@]}" -fill '#3C8C2C' +opaque "$mark" -fill '#2050B0' -opaque "$mark" \
+    -define png:exclude-chunks=date,time "PNG32:$tzmap"
+fi
+
+# Display Properties' monitor picture for a single display (themeui.dll
+# BITMAP 126, fetched as graphics/themeui-bmp); magenta is its transparency.
+mon=$G/themeui-bmp/BITMAP/126.bmp
+if [[ -f $mon && ! $OUT/desk-monitor.png -nt $mon ]]; then
+  magick "$mon" -alpha set -fill none -opaque '#FF00FF' \
+    -define png:exclude-chunks=date,time "PNG32:$OUT/desk-monitor.png"
+fi

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "ocko.xp-bluetooth",
+  "name": "Windows XP Bluetooth",
+  "version": "1.0.0",
+  "author": "ocko",
+  "description": "omarchy.bluetooth for the Windows XP notification area: XP SP2's Bluetooth Devices control panel. Enabled only while an XP theme is active (omarchy/xp/bin/xp-mode); the stock widget stays enabled for other bars.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Bluetooth",
+    "description": "Bluetooth device list with connect/disconnect",
+    "category": "Network",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.bluetooth"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "ocko.xp-clock",
+  "name": "Windows XP Clock",
+  "version": "1.0.0",
+  "author": "ocko",
+  "description": "omarchy.clock for the Windows XP notification area: the bar label with Date and Time Properties. Enabled only while an XP theme is active (omarchy/xp/bin/xp-mode); the stock widget stays enabled for other bars.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Clock",
+    "description": "Date/time label with a calendar popup",
+    "category": "Time",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.clock"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "ocko.xp-menu",
+  "name": "Windows XP menu",
+  "version": "1.0.0",
+  "author": "ocko",
+  "description": "omarchy.menu restyled as Windows XP: the Omarchy and power menus as a Control Panel window, the launcher as Search Results, dmenu prompts as XP dialogs. A bare root request opens the XP Start menu. Enabled only while an XP theme is active (omarchy/xp/bin/xp-mode).",
+  "kinds": [
+    "menu"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "menu": "Menu.qml"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.menu"
+  }
+}

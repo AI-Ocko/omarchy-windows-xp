@@ -1,0 +1,28 @@
+/* Windows XP (Luna Blue) for libadwaita / GTK4. xp-mode links this as
+ * ~/.config/gtk-4.0/gtk.css only while an XP theme is active (the pre-XP file
+ * is moved aside and put back on revert). Colours only, nothing structural:
+ * the scheme's [SysMetrics] values (omarchy/xp/palette.md). GTK3 apps get the
+ * B00merang "Windows XP Luna" theme through gsettings instead. */
+:root {
+  --window-bg-color: #ECE9D8;
+  --window-fg-color: #000000;
+  --view-bg-color: #FFFFFF;
+  --view-fg-color: #000000;
+  --headerbar-bg-color: #ECE9D8;
+  --headerbar-fg-color: #000000;
+  --headerbar-backdrop-color: #ECE9D8;
+  --sidebar-bg-color: #D3E5FA;
+  --sidebar-fg-color: #0A246A;
+  --sidebar-backdrop-color: #D3E5FA;
+  --secondary-sidebar-bg-color: #D3E5FA;
+  --secondary-sidebar-fg-color: #0A246A;
+  --accent-bg-color: #316AC5;
+  --accent-fg-color: #FFFFFF;
+  --accent-color: #316AC5;
+  --card-bg-color: #FFFFFF;
+  --card-fg-color: #000000;
+  --dialog-bg-color: #ECE9D8;
+  --dialog-fg-color: #000000;
+  --popover-bg-color: #FFFFFF;
+  --popover-fg-color: #000000;
+}

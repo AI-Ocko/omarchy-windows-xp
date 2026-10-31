@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "ocko.xp-audio",
+  "name": "Windows XP Volume",
+  "version": "1.0.0",
+  "author": "ocko",
+  "description": "omarchy.audio for the Windows XP notification area: the Volume flyout, Volume Control mixer and speaker menu. Enabled only while an XP theme is active (omarchy/xp/bin/xp-mode); the stock widget stays enabled for other bars.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Audio",
+    "description": "Volume slider, output picker, per-app mixer",
+    "category": "Audio",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.audio"
+  }
+}

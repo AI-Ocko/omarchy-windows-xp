@@ -1,0 +1,199 @@
+#!/bin/bash
+# xp-boot install|on|off|status|preview [boot|password|shutdown|reboot]
+#
+# The Windows XP Plymouth theme: XP boot screen, a "Log On to Windows" dialog
+# for the disk password, and the shutdown screens. Run it yourself, as yourself;
+# it renders the images from omarchy/xp/assets as you and uses sudo only for:
+#   install  copy the theme into /usr/share/plymouth/themes/windows-xp (not the
+#            default yet; `preview` needs it there)
+#   on       install, make it the default, rebuild the boot images
+#   off      make `omarchy` the default again, rebuild, delete the theme files
+# Rebuilding is what omarchy-plymouth-set does: limine-mkinitcpio on this
+# Limine system, else mkinitcpio -P. /usr/share/plymouth/themes/omarchy is
+# never touched.
+#
+# Rollback if the XP splash ever misbehaves at boot: press Esc for the text
+# prompt (typing the password blind also works), or pick a Limine
+# Snapshots entry, then run `xp-boot off`.
+set -euo pipefail
+
+XP=$HOME/.config/omarchy/xp
+ART=$XP/assets/graphics
+FONTS=$HOME/.local/share/fonts/xp
+SRC=$XP/plymouth/windows-xp
+DEST=/usr/share/plymouth/themes/windows-xp
+FILES=(windows-xp.plymouth windows-xp.script boot.png segment.png logon.png bullet.png caret.png
+  band.png line-top.png line-bottom.png glow.png logo.png divider.png shutting-down.png safe-to-turn-off.png)
+
+die() { echo "xp-boot: $*" >&2; exit 1; }
+(( EUID != 0 )) || die "run this as yourself, not root; it asks for sudo itself"
+
+# Render everything at 1x from the XP bitmaps, then pixel-double (-filter
+# point): the script's coordinates are these 1x numbers times 2.
+render() {
+  local out=$1 tmp=$1/.work tb=$ART/taskbar/windows-xp
+  mkdir -p "$tmp"
+  local x2=(-filter point -resize 200%)
+
+  magick "$ART/boot/boot-screen.bmp" "${x2[@]}" "$out/boot.png"
+  magick "$ART/boot/progress-segment.bmp" "${x2[@]}" "$out/segment.png"
+  # Index 15 of the boot palette (this text's only colour) is unrecovered; XP
+  # showed it orange on black.
+  magick "$ART/boot/safe-to-turn-off-text.bmp" -fill '#FF8C00' -opaque white "${x2[@]}" "$out/safe-to-turn-off.png"
+
+  # "Log On to Windows": Luna frame around msgina's Professional banner (101)
+  # and colour strip (103). Window 423x244; client area at (5,29), 413 wide.
+  local W=423 H=244 user
+  user=$(id -un)
+  magick "$tb/win-cap-0.png" -crop 28x29+0+0 +repage "$tmp/cl.png"
+  magick "$tb/win-cap-0.png" -crop 3x29+28+0 +repage -resize $((W - 63))x29\! "$tmp/cm.png"
+  magick "$tb/win-cap-0.png" -crop 35x29+31+0 +repage "$tmp/cr.png"
+  magick "$tmp/cl.png" "$tmp/cm.png" "$tmp/cr.png" +append "$tmp/cap.png"
+  magick "$tb/win-bottom-0.png" -crop 5x5+0+0 +repage "$tmp/bl.png"
+  magick "$tb/win-bottom-0.png" -crop 39x5+5+0 +repage -resize $((W - 10))x5\! "$tmp/bm.png"
+  magick "$tb/win-bottom-0.png" -crop 5x5+44+0 +repage "$tmp/br.png"
+  magick "$tmp/bl.png" "$tmp/bm.png" "$tmp/br.png" +append "$tmp/bottom.png"
+  # XP push button: 9-slice (8 px sides) stretched to 75x23.
+  local b
+  for b in 0 4; do
+    magick "$tb/btn-$b.png" -crop 8x23+0+0 +repage "$tmp/b1.png"
+    magick "$tb/btn-$b.png" -crop 4x23+8+0 +repage -resize 59x23\! "$tmp/b2.png"
+    magick "$tb/btn-$b.png" -crop 8x23+12+0 +repage "$tmp/b3.png"
+    magick "$tmp/b1.png" "$tmp/b2.png" "$tmp/b3.png" +append "$tmp/btn$b.png"
+  done
+  local tahoma=(-font "$FONTS/tahoma.ttf" -density 72 -pointsize 11)
+  magick -size ${W}x${H} xc:'#ECE9D8' \
+    "$tmp/cap.png" -geometry +0+0 -composite \
+    \( "$tb/win-left-0.png" -resize 5x$((H - 34))\! \) -geometry +0+29 -composite \
+    \( "$tb/win-right-0.png" -resize 5x$((H - 34))\! \) -geometry +$((W - 5))+29 -composite \
+    "$tmp/bottom.png" -geometry +0+$((H - 5)) -composite \
+    "$tb/win-close-0.png" -geometry +$((W - 5 - 2 - 21))+5 -composite \
+    "$tb/win-closeg-0.png" -geometry +$((W - 5 - 2 - 21 + 4))+9 -composite \
+    -font "$FONTS/trebucbd.ttf" -density 72 -pointsize 13 \
+    -fill '#0A1E80' -annotate +8+20 'Log On to Windows' \
+    -fill white -annotate +7+19 'Log On to Windows' \
+    "$ART/msgina/BITMAP/101.bmp" -geometry +5+29 -composite \
+    "$ART/msgina/BITMAP/103.bmp" -geometry +5+101 -composite \
+    "${tahoma[@]}" -fill black \
+    -annotate +45+150 'User name:' -annotate +45+180 'Password:' \
+    -fill '#EBEBE4' -stroke '#C9C7BA' -draw 'rectangle 133,135 377,155' \
+    -fill white -stroke '#7F9DB9' -draw 'rectangle 133,165 377,185' -stroke none \
+    -fill '#ACA899' -annotate +137+150 "$user" \
+    "$tmp/btn4.png" -geometry +222+205 -composite \
+    "$tmp/btn0.png" -geometry +303+205 -composite \
+    -fill black -annotate +252+220 'OK' -annotate +323+220 'Cancel' \
+    "${x2[@]}" "$out/logon.png"
+  magick -size 5x5 xc:none -fill black -draw 'circle 2,2 2,0' "${x2[@]}" "$out/bullet.png"
+  magick -size 1x13 xc:black "${x2[@]}" "$out/caret.png"
+
+  # "Windows is shutting down...": logonui's Welcome-screen pieces.
+  magick -size 1x1 xc:'#003399' "$out/band.png"
+  magick "$ART/logonui/BITMAP/125.bmp" "$out/line-top.png"
+  magick "$ART/logonui/BITMAP/126.bmp" "$out/line-bottom.png"
+  magick "$ART/logonui/BITMAP/100.bmp" "${x2[@]}" "$out/glow.png"
+  magick "$ART/logonui/BITMAP/123.bmp" "${x2[@]}" "$out/logo.png"
+  magick "$ART/logonui/BITMAP/124.bmp" "${x2[@]}" "$out/divider.png"
+  magick -background none -fill white -font "$FONTS/framd.ttf" -density 72 -pointsize 20 \
+    label:'Windows is shutting down...' "${x2[@]}" "$out/shutting-down.png"
+
+  cp "$SRC/windows-xp.plymouth" "$SRC/windows-xp.script" "$out/"
+  rm -r "$tmp"
+}
+
+# x_root_access insert|delete: what `xhost +/-si:localuser:root` does (xhost
+# isn't installed): one X11 ChangeHosts request over this display's socket.
+x_root_access() {
+  python3 -I - "$1" "${DISPLAY:-:0}" <<'EOF'
+import socket, struct, sys
+mode = {"insert": 0, "delete": 1}[sys.argv[1]]
+num = sys.argv[2].lstrip(":").split(".")[0]
+s = socket.socket(socket.AF_UNIX)
+s.connect(f"/tmp/.X11-unix/X{num}")
+s.sendall(struct.pack("<BxHHHHxx", 0x6C, 11, 0, 0, 0))   # setup, no auth
+head = s.recv(8, socket.MSG_WAITALL)
+if head[0] != 1:
+    sys.exit("X connection refused")
+s.recv(struct.unpack("<H", head[6:8])[0] * 4, socket.MSG_WAITALL)
+addr = b"localuser\0root"                                   # family 5: server-interpreted
+pad = (4 - len(addr) % 4) % 4
+s.sendall(struct.pack("<BBHBxH", 109, mode, (8 + len(addr) + pad) // 4, 5, len(addr)) + addr + b"\0" * pad)
+s.sendall(struct.pack("<BxH", 43, 1))                       # GetInputFocus: syncs and surfaces errors
+reply = s.recv(32, socket.MSG_WAITALL)
+if reply[0] == 0:
+    sys.exit(f"ChangeHosts failed: X error {reply[1]}")
+EOF
+}
+
+rebuild() {
+  if command -v limine-mkinitcpio >/dev/null; then sudo limine-mkinitcpio; else sudo mkinitcpio -P; fi
+}
+
+install_theme() {
+  local stage f
+  stage=$(mktemp -d)
+  trap 'rm -rf "$stage"' RETURN
+  render "$stage"
+  for f in "${FILES[@]}"; do [[ -s $stage/$f ]] || die "render did not produce $f"; done
+  sudo install -d -o root -g root -m 755 "$DEST"
+  for f in "${FILES[@]}"; do sudo install -o root -g root -m 644 "$stage/$f" "$DEST/$f"; done
+  echo "installed $DEST (${#FILES[@]} files)"
+}
+
+preview() {
+  local what=${1:-boot} mode=boot
+  [[ -r $DEST/windows-xp.script ]] || die "run 'xp-boot install' first"
+  [[ $what == shutdown || $what == reboot ]] && mode=$what
+  # plymouthd insists on root. Its renderer order is X11, DRM, framebuffer;
+  # only X11 (a window on this session) is wanted, so refuse unless root can
+  # open this display. Xwayland admits this user by identity only, so root is
+  # added to its access list for the preview and removed again afterwards.
+  local display=${DISPLAY:-:0}
+  x_root_access insert
+  trap 'x_root_access delete' EXIT     # also on die
+  sudo env DISPLAY="$display" xprop -root _NET_SUPPORTING_WM_CHECK >/dev/null ||
+    die "root cannot open X display $display; not starting plymouthd"
+  # --debug traces go to this terminal (Plymouth script errors show up there).
+  sudo env DISPLAY="$display" plymouthd --no-daemon --debug \
+    --mode="$mode" --tty=/dev/tty63 --no-boot-log \
+    --kernel-command-line="splash plymouth.splash=windows-xp plymouth.ignore-udev" &
+  sleep 1
+  sudo plymouth show-splash
+  # Screenshots (as you, not root) while the preview window is up.
+  local shots=$XP/assets/evidence/phaseD n
+  mkdir -p "$shots"
+  if [[ $what == password ]]; then
+    ( for n in 1 2 3 4 5 6; do sleep 2; grim "$shots/preview-$what-$n.png"; done ) &
+    echo "Type a few junk characters (NOT your real disk password) into the preview window, then Enter."
+    sudo plymouth ask-for-password --prompt "Please enter passphrase for disk root:" >/dev/null || true
+  else
+    for n in 1 2 3 4; do sleep 2; grim "$shots/preview-$what-$n.png"; done
+  fi
+  sudo plymouth quit || true
+  wait || true
+}
+
+case ${1:-} in
+  install) install_theme ;;
+  on)
+    install_theme
+    sudo plymouth-set-default-theme windows-xp
+    rebuild
+    echo "default theme: $(plymouth-set-default-theme)"
+    ;;
+  off)
+    sudo plymouth-set-default-theme omarchy
+    rebuild
+    if [[ -d $DEST ]]; then
+      for f in "${FILES[@]}"; do sudo rm -f -- "$DEST/$f"; done
+      sudo rmdir -- "$DEST"
+    fi
+    echo "default theme: $(plymouth-set-default-theme)"
+    ;;
+  status)
+    echo "default theme: $(plymouth-set-default-theme)"
+    if [[ -d $DEST ]]; then ls -l "$DEST"; else echo "$DEST: not installed"; fi
+    ;;
+  preview) preview "${2:-boot}" ;;
+  render) mkdir -p "${2:?render <dir>}" && render "$2" ;;
+  *) die "usage: xp-boot install|on|off|status|preview [boot|password|shutdown|reboot]" ;;
+esac

@@ -1,0 +1,530 @@
+#!/bin/bash
+# xp-mode on|off|status -- apply or fully revert the Windows XP side effects
+# that an Omarchy theme cannot carry by itself. Called by
+# ~/.config/omarchy/hooks/theme-set.d/windows-xp after every `omarchy theme set`.
+#
+#   on      First call saves the pre-XP state to saved-state.json, then applies.
+#           Later calls (switching blue -> olive) only re-apply; never re-save.
+#   off     Restores from saved-state.json, removes what `on` installed, deletes
+#           the saved state. With nothing saved and nothing installed it returns
+#           before forking anything.
+#   status  "on" or "off" plus a short summary.
+#   sizes   Re-apply only the sizes step (XP terminal font from Omarchy's text
+#           size); a no-op outside XP. Run by systemd/user/xp-sizes.path.
+#
+# The hook's stdout is discarded, so errors go to stderr AND to $LOG.
+#
+# Adding a step: define <name>_save (print a JSON value, `null` if nothing to
+# save), <name>_apply and <name>_restore (gets that saved JSON as $1), then
+# append <name> to STEPS. Each step is run and logged independently; `off`
+# keeps saved-state.json if any restore failed so a rerun can finish the job.
+
+STEPS=(gsettings hypr shell tmux files sizes)
+
+SCHEMA=org.gnome.desktop.interface
+STATE_DIR=$HOME/.local/state/omarchy/xp
+SAVED=$STATE_DIR/saved-state.json
+LOG=$STATE_DIR/xp-mode.log
+THEME_NAME_FILE=$HOME/.local/state/omarchy/current/theme.name
+TOGGLE=$HOME/.local/state/omarchy/toggles/hypr/windows-xp.lua
+LATE=${BASH_SOURCE[0]%/*}/../hypr/late.lua
+SHELL_JSON=$HOME/.config/omarchy/shell.json
+THEME_DIR=$HOME/.local/state/omarchy/current/theme
+XP_DIR=$(cd "${BASH_SOURCE[0]%/*}/.." && pwd)
+
+log() {
+  local line
+  printf -v line '%(%F %T)T xp-mode %s: %s' -1 "$CMD" "$*"
+  echo "$line" >&2
+  mkdir -p "$STATE_DIR" && echo "$line" >>"$LOG"
+}
+
+xp_theme_active() {
+  local name=""
+  [[ -r $THEME_NAME_FILE ]] && read -r name <"$THEME_NAME_FILE"
+  [[ $name == windows-xp || $name == windows-xp-* ]]
+}
+
+# ---------------------------------------------------------------- gsettings
+# All seven keys are recorded, but only the ones XP sets are restored.
+# gtk-theme, icon-theme and color-scheme are re-derived for the *new* theme by
+# omarchy-theme-set-gnome before this hook runs; writing the saved values back
+# would give e.g. amber-crt Miasma's icon theme. So XP sets gtk-theme (the
+# scheme's B00merang GTK theme, named in the theme's gtk.theme) and
+# color-scheme (XP is light, though its terminal palette makes colors.toml
+# "dark") without restoring them; icon-theme comes from icons.theme.
+GSETTINGS_SAVED=(gtk-theme icon-theme cursor-theme cursor-size font-name document-font-name monospace-font-name)
+# XP pins no text size of its own. @PT@ is the point size of the font XP
+# replaces, read from saved-state.json: Tahoma takes the pre-XP font-name's,
+# Lucida Console the pre-XP monospace-font-name's (Omarchy's 11 if unreadable).
+# Omarchy's text-scaling-factor stays Omarchy's and scales both, so XP GTK text
+# is exactly as large as Omarchy's own would be.
+declare -A GSETTINGS_XP=(
+  [font-name]="'Tahoma @PT@'"
+  [document-font-name]="'Tahoma @PT@'"
+  [monospace-font-name]="'Lucida Console @PT@'"
+  [cursor-theme]="'windows-xp-cursors'"
+)
+declare -A GSETTINGS_PT_FROM=([font-name]=font-name [document-font-name]=font-name [monospace-font-name]=monospace-font-name)
+
+# saved_pt <key>: the pt at the end of the saved pre-XP value ('Adwaita Sans 11').
+saved_pt() {
+  local v
+  v=$(jq -r --arg k "$1" '.gsettings[$k] // empty' "$SAVED" 2>/dev/null)
+  v=${v%\'}
+  v=${v##* }
+  [[ $v =~ ^[0-9]+(\.[0-9]+)?$ ]] && echo "$v" || echo 11
+}
+
+# Hyprland draws the pointer itself (and for cursor-shape clients), so it is
+# switched too. There is no getter for its theme, but with
+# cursor:sync_gsettings_theme (default on) it mirrors whatever it loads into
+# gsettings cursor-theme/-size, so the saved gsettings value is its pre-XP
+# theme. 'default' is what it reports for "no theme set", and an empty theme
+# reloads exactly that (XCURSOR_THEME or "default"), so it maps back to empty.
+hypr_cursor() {
+  local theme=${1#\'} size
+  theme=${theme%\'}
+  [[ $theme == default ]] && theme=
+  size=$(gsettings get "$SCHEMA" cursor-size) || return 1
+  [[ $(hyprctl setcursor $theme "$size") == ok ]] || { log "hyprctl setcursor '$theme' $size failed"; return 1; }
+}
+
+# Values are kept as gsettings' own GVariant text ('Adwaita Sans 11', 24), which
+# `gsettings set` parses back exactly.
+gsettings_save() {
+  local k v args=()
+  for k in "${GSETTINGS_SAVED[@]}"; do
+    v=$(gsettings get "$SCHEMA" "$k") || return 1
+    args+=(--arg "$k" "$v")
+  done
+  jq -n '$ARGS.named' "${args[@]}"
+}
+
+gsettings_apply() {
+  local k v gtk="" rc=0
+  for k in "${!GSETTINGS_XP[@]}"; do
+    v=${GSETTINGS_XP[$k]}
+    [[ -n ${GSETTINGS_PT_FROM[$k]:-} ]] && v=${v//@PT@/$(saved_pt "${GSETTINGS_PT_FROM[$k]}")}
+    gsettings set "$SCHEMA" "$k" "$v" || { log "gsettings set $k $v failed"; rc=1; }
+  done
+  [[ -r $THEME_DIR/gtk.theme ]] && read -r gtk <"$THEME_DIR/gtk.theme"
+  if [[ -n $gtk ]]; then
+    gsettings set "$SCHEMA" gtk-theme "$gtk" || { log "gsettings set gtk-theme $gtk failed"; rc=1; }
+  fi
+  gsettings set "$SCHEMA" color-scheme prefer-light || { log "gsettings set color-scheme failed"; rc=1; }
+  hypr_cursor "${GSETTINGS_XP[cursor-theme]}" || rc=1
+  return $rc
+}
+
+gsettings_restore() {
+  [[ $1 != null ]] || return 0
+  local k v rc=0
+  for k in "${!GSETTINGS_XP[@]}"; do
+    v=$(jq -er --arg k "$k" '.[$k]' <<<"$1") || { log "no saved value for $k"; rc=1; continue; }
+    gsettings set "$SCHEMA" "$k" "$v" || { log "gsettings set $k $v failed"; rc=1; }
+  done
+  hypr_cursor "$(jq -r '."cursor-theme"' <<<"$1")" || rc=1
+  return $rc
+}
+
+# --------------------------------------------------------------------- hypr
+# late.lua must load after hypr/looknfeel.lua: install it as a toggle (a copy;
+# require_all skips symlinks). By the time the hook runs, omarchy-theme-set has
+# already written theme.name and reloaded Hyprland, so reload again only when
+# the installed copy actually changed.
+hypr_save() { echo null; }
+
+hypr_reload() {
+  hyprctl reload >/dev/null || return 1
+  local errs
+  errs=$(hyprctl configerrors)
+  [[ -z ${errs//[[:space:]]/} ]] || { log "hyprland config errors: $errs"; return 1; }
+}
+
+hypr_apply() {
+  cmp -s "$LATE" "$TOGGLE" && return 0
+  cp "$LATE" "$TOGGLE.tmp" && mv "$TOGGLE.tmp" "$TOGGLE" || return 1
+  hypr_reload
+}
+
+# late.lua guards on theme.name, so after a theme switch the copy is already
+# inert. Reload only when called directly while an XP theme is still active.
+hypr_restore() {
+  [[ -e $TOGGLE ]] || return 0
+  rm -f "$TOGGLE" || return 1
+  if xp_theme_active; then hypr_reload; fi
+}
+
+# -------------------------------------------------------------------- shell
+# bar.id / plugins / disabledPlugins in shell.json. Absent is saved as null,
+# present as {"v": value}, so restore can delete a key rather than write null
+# into it. Restore writes only if the keys differ from what was saved, so a
+# file XP never touched stays byte-identical (jq --indent 2 matches the
+# shell's format).
+SHELL_KEYS='{
+  bar_id: (if (.bar | type) == "object" and (.bar | has("id")) then {v: .bar.id} else null end),
+  disabledPlugins: (if has("disabledPlugins") then {v: .disabledPlugins} else null end),
+  plugins: (if has("plugins") then {v: .plugins} else null end)
+}'
+
+shell_save() { jq -c "$SHELL_KEYS" "$SHELL_JSON"; }
+
+# XP selects the XP taskbar (omarchy/plugins/ocko.xp-taskbar) and swaps five
+# first-party plugins for their XP clones, which exist only for this: a
+# clone is enabled by its plugins[] entry, and the stock one it replaces
+# goes in disabledPlugins[]. Callers keep using the omarchy.* ids; the
+# shell's resolveEnabledId() routes them to the enabled clone. Non-XP
+# themes never list the clones, so they load the stock plugins.
+XP_BAR=ocko.xp-taskbar
+XP_CLONES='[["ocko.xp-menu", "omarchy.menu"], ["ocko.xp-polkit", "omarchy.polkit"],
+            ["ocko.xp-notifications", "omarchy.notifications"], ["ocko.xp-osd", "omarchy.osd"],
+            ["ocko.xp-idle", "omarchy.idle"]]'
+# Bar-widget clones are enabled the same way but the stock widget is NOT
+# disabled: bar.layout keeps naming the stock id, the XP taskbar puts the
+# enabled clone in its place (Bar.qml xpCloneEntry), and resolveEnabledId()
+# sends `omarchy-shell shell toggle omarchy.<id>` to the clone. A stock bar
+# (no XP) never sees them, because restore puts plugins[] back.
+XP_WIDGET_CLONES='["ocko.xp-monitor", "ocko.xp-audio", "ocko.xp-network", "ocko.xp-clock", "ocko.xp-tray", "ocko.xp-power", "ocko.xp-weather", "ocko.xp-bluetooth", "ocko.xp-agents"]'
+# Order-preserving: entries already there keep their place; missing ones are appended.
+# $failed (from compat_check) lists XP plugins the installed Omarchy broke:
+# they are dropped from plugins[] (and their stock service comes back out of
+# disabledPlugins[], unless it was disabled before XP, per $orig, the saved
+# pre-XP keys). A failed taskbar keeps bar.id on the stock bar and drops the
+# widget clones too, since only the XP taskbar places them.
+XP_CONFIG='($failed | index($bar) | not) as $bar_ok
+  | [$clones[] | select(.[0] as $c | $failed | index($c) | not)] as $on
+  | [$clones[] | select(.[0] as $c | $failed | index($c))] as $off
+  | (if $bar_ok then [$widgets[] | select(. as $c | $failed | index($c) | not)] else [] end) as $won
+  | ([$off[] | .[0]] + ($widgets - $won)) as $drop
+  | ([$off[] | .[1]] - ($orig.disabledPlugins.v // [])) as $undisable
+  | (if $bar_ok then .bar.id = $bar
+     elif (.bar | type) == "object" and .bar.id == $bar then
+       (if $orig.bar_id then .bar.id = $orig.bar_id.v else del(.bar.id) end)
+     else . end)
+  | .plugins = ([(.plugins // [])[] | select((if type == "object" then .id else . end) as $i | $drop | index($i) | not)] as $p
+      | $p + [([$on[] | .[0]] + $won)[] as $c | select([$p[] | if type == "object" then .id else . end] | index($c) | not) | {id: $c}])
+  | .disabledPlugins = ([(.disabledPlugins // [])[] | select(. as $s | $undisable | index($s) | not)] as $d
+      | $d + [$on[] | .[1] as $s | select($d | index($s) | not) | $s])'
+
+# ------------------------------------------------------------ compatibility
+# Every XP plugin copies stock Omarchy code and calls stock APIs, so an
+# Omarchy update can break one. xp-compat-test prints "<id> ok|ok-unverified|
+# fail <reason>" per plugin; the failing ones go in XP_FAILED (a JSON array)
+# and stay off, so their stock plugin keeps working. If the test cannot run
+# at all, every XP plugin stays off. The user is told once per distinct set
+# of fallbacks (the marker), not on every theme switch.
+XP_FAILED='[]'
+COMPAT_NOTIFIED=$STATE_DIR/compat-fallback
+
+compat_check() {
+  local out rc ids=() id st name names=()
+  out=$("$XP_DIR/bin/xp-compat-test" 2>&1)
+  rc=$?
+  if ((rc > 1)) || [[ -z $out ]]; then
+    log "xp-compat-test could not run (exit $rc): $out -- every XP plugin stays off"
+    for id in "$XP_DIR"/../plugins/ocko.xp-*/; do id=${id%/}; ids+=("${id##*/}"); done
+  else
+    while read -r id st _; do [[ $st == fail ]] && ids+=("$id"); done <<<"$out"
+    ((${#ids[@]})) && log "xp-compat-test: $(grep -v ' ok$' <<<"$out" | tr '\n' ';')"
+  fi
+  XP_FAILED=$(printf '%s\n' "${ids[@]}" | jq -R . | jq -cs 'map(select(length > 0))')
+  if ((${#ids[@]} == 0)); then
+    rm -f "$COMPAT_NOTIFIED"
+    return 0
+  fi
+  [[ -r $COMPAT_NOTIFIED && $(<"$COMPAT_NOTIFIED") == "$XP_FAILED" ]] && return 0
+  echo "$XP_FAILED" >"$COMPAT_NOTIFIED"
+  for id in "${ids[@]}"; do
+    name=$(jq -r '.name // empty' "$XP_DIR/../plugins/$id/manifest.json" 2>/dev/null)
+    names+=("${name:-$id}")
+  done
+  omarchy-notification-send -u normal "Windows XP: some parts fell back to Omarchy's own" \
+    "This Omarchy version changed what they need, so the stock versions are in use: $(printf '%s, ' "${names[@]}" | sed 's/, $//'). Details: ~/.local/state/omarchy/xp/xp-mode.log" \
+    >/dev/null 2>&1 || log "could not send the fallback notification"
+}
+
+# The swap needs a shell restart. omarchy.notifications and omarchy.polkit
+# own session-wide names (org.freedesktop.Notifications, the polkit agent
+# object), and the shell creates a newly enabled service before it destroys
+# the one being disabled, so a live swap leaves the clone without the name
+# (verified 2026-10-28, see evidence/phaseC/task8/NOTES.md). A restart also
+# covers the two omarchy 4.0.6 bar-swap bugs (CLAUDE.md). Never restart
+# while the session is locked: then only the bar is selected live, the
+# Phase B way (enable + rescan), and the clones wait for the next unlocked
+# `xp-mode on`.
+shell_apply() {
+  local locked orig=null
+  compat_check
+  [[ -r $SAVED ]] && orig=$(jq -c '.shell // null' "$SAVED")
+  jq --indent 2 --arg bar "$XP_BAR" --argjson clones "$XP_CLONES" --argjson widgets "$XP_WIDGET_CLONES" \
+    --argjson failed "$XP_FAILED" --argjson orig "$orig" "$XP_CONFIG" "$SHELL_JSON" >"$SHELL_JSON.xp-tmp" || return 1
+  # Quoted right-hand side: unquoted, [[ == ]] reads it as a glob pattern and
+  # JSON's brackets never match (it restarted the shell on every XP -> XP switch).
+  if [[ $(jq -cS . "$SHELL_JSON.xp-tmp") == "$(jq -cS . "$SHELL_JSON")" ]]; then
+    rm -f "$SHELL_JSON.xp-tmp"
+    return 0
+  fi
+  locked=$(timeout 3 omarchy-shell lock isLocked 2>/dev/null)
+  if [[ $locked == true ]]; then
+    rm -f "$SHELL_JSON.xp-tmp"
+    log "session locked: selecting the XP bar live only; the XP menu/polkit/notification/OSD/idle clones load at the next unlocked 'omarchy theme set windows-xp*'"
+    [[ $(jq -r '.bar.id // empty' "$SHELL_JSON") == "$XP_BAR" ]] && return 0
+    jq -e --arg bar "$XP_BAR" 'index($bar)' <<<"$XP_FAILED" >/dev/null && return 0
+    timeout 5 omarchy-plugin-enable "$XP_BAR" >/dev/null || return 1
+    timeout 5 omarchy-shell shell rescanPlugins >/dev/null || log "rescanPlugins failed; XP tray may be blank until omarchy-restart-shell"
+    return 0
+  fi
+  log "selecting the XP bar and plugins in shell.json (diff: $(diff <(jq -S . "$SHELL_JSON") <(jq -S . "$SHELL_JSON.xp-tmp") | grep -c "^[<>]") lines)"
+  mv "$SHELL_JSON.xp-tmp" "$SHELL_JSON" || return 1
+  if [[ $locked == false ]]; then
+    shell_restart
+  else
+    log "shell not answering: XP config written to shell.json; it applies when the shell starts"
+  fi
+}
+
+shell_restore() {
+  [[ $1 != null ]] || return 0
+  local now
+  now=$(jq -c "$SHELL_KEYS" "$SHELL_JSON") || return 1
+  [[ $(jq -cS . <<<"$now") == "$(jq -cS . <<<"$1")" ]] && return 0
+  # A saved state from before `plugins` was recorded leaves plugins alone.
+  jq --indent 2 --argjson s "$1" '
+    (if $s.bar_id then .bar.id = $s.bar_id.v elif (.bar | type) == "object" then del(.bar.id) else . end)
+    | (if $s.disabledPlugins then .disabledPlugins = $s.disabledPlugins.v else del(.disabledPlugins) end)
+    | (if ($s | has("plugins")) then (if $s.plugins then .plugins = $s.plugins.v else del(.plugins) end) else . end)
+  ' "$SHELL_JSON" >"$SHELL_JSON.xp-tmp" && mv "$SHELL_JSON.xp-tmp" "$SHELL_JSON" || return 1
+  shell_restart
+  return 0
+}
+
+# Both directions restart the shell: entering XP for the service swap (see
+# shell_apply); leaving it for the swap back and because omarchy 4.0.6
+# leaves the shell's `bar` reference null after a live switch from a plugin
+# bar to the built-in one (shell.qml: the default bar's Loader configures
+# it, then the plugin bar Loader's onActiveChanged clears it), which breaks
+# `omarchy-shell shell toggle <panel>` hotkeys and the notification offset.
+# Never while the session is locked.
+shell_restart() {
+  if [[ $(timeout 3 omarchy-shell lock isLocked 2>/dev/null) == false ]]; then
+    omarchy-restart-shell >/dev/null 2>&1 || log "omarchy-restart-shell failed; run it by hand to load the right plugins"
+  else
+    log "session locked or shell not answering: skipped shell restart; run omarchy-restart-shell"
+  fi
+}
+
+# --------------------------------------------------------------------- tmux
+# tmux/tmux.conf sources the active theme's tmux.conf last, so a server started
+# later picks the XP status bar up, or drops it, by itself. One that is already
+# running has to be pushed: `on` sources the theme's file; `off` re-sources
+# tmux.conf, which sets every option the XP file overrides (and, the theme
+# having changed, no longer finds an XP file to source). Default socket only.
+TMUX_THEME=$HOME/.local/state/omarchy/current/theme/tmux.conf
+
+tmux_save() { echo null; }
+
+tmux_apply() {
+  tmux has-session 2>/dev/null || return 0
+  [[ -r $TMUX_THEME ]] || { log "theme has no $TMUX_THEME"; return 1; }
+  tmux source-file "$TMUX_THEME"
+}
+
+tmux_restore() {
+  tmux has-session 2>/dev/null || return 0
+  tmux source-file "$HOME/.config/tmux/tmux.conf"
+}
+
+# -------------------------------------------------------------------- files
+# Files XP swaps in place. On the first `on`, each pre-XP file is moved (mv,
+# so bytes, inode and mtime survive) into $ORIG, or an .absent marker is left
+# if there was none; `off` moves it back or deletes what XP put there. Later
+# `on`s only refresh the XP side, so an XP -> XP switch never stashes XP's own
+# files as "original". Kinds: none (absent under XP), copy <src>, link <target>.
+#   gtk-3.0/gtk.css   ocko's Aether override would recolour the GTK3 XP theme
+#   gtk-4.0/gtk.css   -> the scheme's libadwaita palette (theme gtk.css)
+#   Zen userChrome    -> scheme zen.css + omarchy/xp/zen/userChrome.css
+#   branding, fastfetch: the XP About logo (fastfetch's config inlines its own
+#                     logo and never reads about.txt, so it is swapped too)
+ORIG=$STATE_DIR/orig
+ZEN_CSS=$STATE_DIR/zen-userChrome.css
+
+# The live Zen profile is the install's locked Default=, not profiles.ini's.
+zen_profile() {
+  local line
+  [[ -r $HOME/.config/zen/installs.ini ]] || return 1
+  while IFS= read -r line; do
+    [[ $line == Default=* ]] && { echo "$HOME/.config/zen/${line#Default=}"; return 0; }
+  done <"$HOME/.config/zen/installs.ini"
+  return 1
+}
+
+files_list() {
+  local zp
+  printf '%s\n' "$HOME/.config/gtk-3.0/gtk.css|none" \
+    "$HOME/.config/gtk-4.0/gtk.css|link|$THEME_DIR/gtk.css" \
+    "$HOME/.config/omarchy/branding/about.txt|copy|$XP_DIR/assets/branding/about.txt" \
+    "$HOME/.config/omarchy/branding/screensaver.txt|copy|$XP_DIR/assets/branding/screensaver.txt" \
+    "$HOME/.config/fastfetch/config.jsonc|copy|$XP_DIR/fastfetch.jsonc"
+  if zp=$(zen_profile) && [[ -d $zp/chrome ]]; then
+    echo "$zp/chrome/userChrome.css|link|$ZEN_CSS"
+  else
+    log "no live Zen profile with a chrome/ dir; Zen stays unstyled"
+  fi
+}
+
+files_save() { echo null; }
+
+files_apply() {
+  local path kind src aside rc=0
+  mkdir -p "$ORIG" || return 1
+  cat "$THEME_DIR/zen.css" "$XP_DIR/zen/userChrome.css" >"$ZEN_CSS.tmp" && mv "$ZEN_CSS.tmp" "$ZEN_CSS" || rc=1
+  while IFS='|' read -r path kind src; do
+    aside=$ORIG/${path//\//%}
+    if [[ ! -e $aside && ! -L $aside && ! -e $aside.absent ]]; then
+      if [[ -e $path || -L $path ]]; then
+        mv -T "$path" "$aside" || { log "could not stash $path"; rc=1; continue; }
+      else
+        : >"$aside.absent" || { rc=1; continue; }
+      fi
+    fi
+    case $kind in
+      none) rm -f "$path" ;;
+      copy) rm -f "$path" && cp "$src" "$path" ;;
+      link) ln -sfn "$src" "$path" ;;
+    esac || { log "could not install the XP $path"; rc=1; }
+  done < <(files_list)
+  return $rc
+}
+
+# Walks $ORIG rather than files_list, so a file stashed under an earlier
+# layout (or a Zen profile that has since changed) still comes back.
+files_restore() {
+  local aside path rc=0
+  [[ -d $ORIG ]] || return 0
+  for aside in "$ORIG"/*; do
+    [[ -e $aside || -L $aside ]] || continue
+    path=${aside#"$ORIG"/}
+    if [[ $path == *.absent ]]; then
+      path=${path%.absent}
+      path=${path//%//}
+      rm -f "$path" && rm -f "$aside" || { log "could not remove the XP $path"; rc=1; }
+    else
+      path=${path//%//}
+      rm -f "$path" && mv -T "$aside" "$path" || { log "could not restore $path"; rc=1; }
+    fi
+  done
+  ((rc == 0)) && rm -f "$ZEN_CSS" && rmdir "$ORIG"
+  return $rc
+}
+
+# -------------------------------------------------------------------- sizes
+# The XP terminal font follows Omarchy's text size. `omarchy display text
+# size` writes the terminal pt into ~/.config/foot/foot.ini (Omarchy's default
+# is 9); Lucida Console needs pt x 13/12 to match JetBrainsMono's x-height
+# there (9 -> 10, the desktop's 12 -> 13). Only the size fields of the font=
+# line in the live copy of the theme's foot.ini change, via a new file, so
+# nothing tracked is written; theme-set regenerates the copy from the theme.
+# The shell and GTK follow Omarchy by themselves (no base-size pin in the XP
+# shell.toml; gsettings_apply above). Nothing to restore: a theme switch
+# replaces the live copy.
+USER_FOOT=$HOME/.config/foot/foot.ini
+
+sizes_save() { echo null; }
+sizes_restore() { return 0; }
+
+sizes_apply() {
+  local pt=9 lpt line live=$THEME_DIR/foot.ini
+  if [[ -r $USER_FOOT ]]; then
+    while IFS= read -r line; do
+      [[ $line =~ ^[[:space:]]*font[[:space:]]*=.*:size=([0-9.]+) ]] && { pt=${BASH_REMATCH[1]}; break; }
+    done <"$USER_FOOT"
+  fi
+  lpt=$(awk -v p="$pt" 'BEGIN { printf "%d", int(p * 13 / 12 + 0.5) }')
+  [[ -r $live ]] || { log "no $live to size"; return 1; }
+  sed -E "/^[[:space:]]*font[[:space:]]*=/ s/(:size=)[0-9.]+/\1$lpt/g" "$live" >"$live.xp-tmp" || return 1
+  if cmp -s "$live.xp-tmp" "$live"; then
+    rm -f "$live.xp-tmp"
+  else
+    mv "$live.xp-tmp" "$live" && log "terminal: foot $pt pt -> Lucida Console $lpt pt"
+  fi
+}
+
+# ---------------------------------------------------------------- commands
+save_state() {
+  local s v args=()
+  for s in "${STEPS[@]}"; do
+    v=$("${s}_save") || { log "save failed in step $s"; return 1; }
+    args+=(--argjson "$s" "$v")
+  done
+  jq -n '$ARGS.named' "${args[@]}" >"$SAVED.tmp" && mv "$SAVED.tmp" "$SAVED"
+}
+
+cmd_on() {
+  mkdir -p "$STATE_DIR" || return 1
+  if [[ ! -e $SAVED ]]; then
+    save_state || { log "could not save pre-XP state; nothing applied"; return 1; }
+  fi
+  local s rc=0
+  for s in "${STEPS[@]}"; do
+    "${s}_apply" || { log "apply failed in step $s (others still applied; rerun 'xp-mode on' or 'off')"; rc=1; }
+  done
+  return $rc
+}
+
+cmd_off() {
+  local s part rc=0
+  for s in "${STEPS[@]}"; do
+    part=null
+    [[ -e $SAVED ]] && part=$(jq -c --arg s "$s" '.[$s]' "$SAVED")
+    "${s}_restore" "$part" || { log "restore failed in step $s"; rc=1; }
+  done
+  if ((rc == 0)); then
+    rm -f "$SAVED"
+  else
+    log "kept $SAVED so a rerun of 'xp-mode off' can finish the restore"
+  fi
+  return $rc
+}
+
+cmd_status() {
+  local name=""
+  [[ -r $THEME_NAME_FILE ]] && read -r name <"$THEME_NAME_FILE"
+  if [[ -e $SAVED ]]; then echo on; else echo off; fi
+  echo "theme: ${name:-unknown}"
+  if [[ -e $SAVED ]]; then
+    echo "saved-state: $SAVED ($(date -r "$SAVED" '+%F %T'))"
+  else
+    echo "saved-state: absent"
+  fi
+  if [[ ! -e $TOGGLE ]]; then
+    echo "hypr toggle: absent"
+  elif cmp -s "$LATE" "$TOGGLE"; then
+    echo "hypr toggle: installed"
+  else
+    echo "hypr toggle: installed, differs from late.lua"
+  fi
+  echo "font-name: $(gsettings get "$SCHEMA" font-name)  monospace: $(gsettings get "$SCHEMA" monospace-font-name)"
+  [[ -s $LOG ]] && echo "last logged error: $(tail -n 1 "$LOG")"
+  return 0
+}
+
+CMD=${1:-}
+case $CMD in
+  on | off) ;;
+  status) cmd_status; exit ;;
+  sizes) xp_theme_active || exit 0 ;;
+  *) echo "usage: xp-mode on|off|status|sizes" >&2; exit 2 ;;
+esac
+
+# Never forked or locked when there is nothing to undo: this runs on every
+# non-XP theme switch.
+[[ $CMD == off && ! -e $SAVED && ! -e $TOGGLE ]] && exit 0
+
+# Theme switches can overlap (omarchy-theme-set runs hooks outside its lock);
+# two concurrent first `on`s could otherwise both save, the second capturing XP
+# values as the "original" state.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/xp-mode.lock"
+flock 9
+
+if [[ $CMD == sizes ]]; then sizes_apply; else "cmd_$CMD"; fi

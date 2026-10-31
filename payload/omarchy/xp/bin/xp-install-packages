@@ -1,0 +1,27 @@
+#!/bin/bash
+# The only part of the XP theme that needs root. Run it yourself, as yourself
+# (not with sudo): yay builds AUR packages as the user and asks for sudo only
+# to install. Nothing else in omarchy/xp/ ever calls sudo.
+#
+# Installs, and so writes as root:
+#   hyprland-plugin-hyprbars (AUR, pkgbase hyprland-plugins, builds hyprwm's
+#     official repo at a pinned commit) -> /usr/lib/libhyprbars.so + its LICENSE
+#   xscreensaver (extra) -> /usr/bin/xscreensaver*, /usr/lib/xscreensaver/
+#     (the hacks, incl. pipes), /usr/share/xscreensaver/, /etc/pam.d/xscreensaver,
+#     two /usr/share/applications entries. No autostart, no systemd unit.
+#
+# Undo: sudo pacman -Rns hyprland-plugin-hyprbars xscreensaver
+set -euo pipefail
+
+(( EUID != 0 )) || { echo "run this as yourself, not root (yay refuses root)" >&2; exit 1; }
+
+# hyprbars is ABI-locked to the running Hyprland; the AUR package pins <0.57.
+hv=$(hyprctl version -j | jq -r .tag)
+[[ $hv == v0.56.* ]] || { echo "Hyprland is $hv; this script expects 0.56.x (hyprbars ABI)" >&2; exit 1; }
+
+sudo pacman -S --needed xscreensaver
+yay -S --needed hyprland-plugin-hyprbars
+
+echo
+pacman -Q hyprland hyprland-plugin-hyprbars xscreensaver
+ls -l /usr/lib/libhyprbars.so /usr/lib/xscreensaver/pipes

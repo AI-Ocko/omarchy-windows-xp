@@ -1,0 +1,12 @@
+/* Windows XP (Olive Green): the scheme half of Zen's XP userChrome.css.
+ * xp-mode concatenates this with omarchy/xp/zen/userChrome.css into the file
+ * the live Zen profile's chrome/userChrome.css links to. Values: palette.md. */
+:root {
+  --xp-face: #ECE9D8;
+  --xp-caption: linear-gradient(to bottom, #8BA169 0%, #E9F2C7 4%, #BFCB92 11%, #AFBC84 18%, #A7B580 30%, #AAB883 45%, #B3C48B 60%, #C2CD95 78%, #A3B27F 93%, #96A867 100%);
+  --xp-caption-text: #FFFFFF;
+  --xp-select: #93A070;
+  --xp-select-text: #FFFFFF;
+  --xp-edit-border: #A4B97F;
+  --xp-gray-text: #ACA899;
+}

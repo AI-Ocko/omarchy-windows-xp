@@ -1,0 +1,36 @@
+# Windows XP shell hook, sourced from ~/.bashrc by interactive shells only, and
+# before Omarchy's bash init so starship's init (which bakes PS2 once) already
+# sees STARSHIP_CONFIG. Builtins and /proc reads only: no forks, here or per
+# prompt. "XP is active" = theme.name is windows-xp or windows-xp-*.
+
+_xp_theme=
+[[ -r ~/.local/state/omarchy/current/theme.name ]] && read -r _xp_theme <~/.local/state/omarchy/current/theme.name
+
+if [[ $_xp_theme == windows-xp || $_xp_theme == windows-xp-* ]]; then
+  export STARSHIP_CONFIG=$HOME/.config/omarchy/xp/starship.toml
+
+  # cmd.exe's path for the prompt (see omarchy/xp/starship.toml for why bash
+  # does this): ~/foo -> C:\Documents and Settings\$USER\foo, /usr -> C:\usr.
+  _xp_prompt_path() {
+    local p=$PWD
+    if [[ $p == "$HOME" || $p == "$HOME"/* ]]; then
+      p="Documents and Settings/$USER${p#"$HOME"}"
+    else
+      p=${p#/}
+    fi
+    export XP_PROMPT_PATH="C:\\${p//\//\\}"
+  }
+  # starship's bash init calls this before rendering each prompt.
+  starship_precmd_user_func=_xp_prompt_path
+
+  # The banner belongs to a new console window only: a shell foot started
+  # directly. Not tmux panes (TMUX set, parent tmux), not subshells or
+  # `bash -ic` (parent bash). SHLVL can't tell: foot passes it through as-is.
+  if [[ -z ${TMUX-} ]] && read -r _xp_parent </proc/$PPID/comm && [[ $_xp_parent == foot ]]; then
+    printf 'Microsoft Windows XP [Version 5.1.2600]\n(C) Copyright 1985-2001 Microsoft Corp.\n'
+  fi
+elif [[ ${STARSHIP_CONFIG-} == "$HOME/.config/omarchy/xp/starship.toml" ]]; then
+  # Inherited from a shell opened while XP was active; not ours to keep.
+  unset STARSHIP_CONFIG XP_PROMPT_PATH
+fi
+unset _xp_theme _xp_parent

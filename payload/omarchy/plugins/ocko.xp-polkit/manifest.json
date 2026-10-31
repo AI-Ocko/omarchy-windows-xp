@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "ocko.xp-polkit",
+  "name": "Windows XP Run As",
+  "version": "1.0.0",
+  "author": "ocko",
+  "description": "omarchy.polkit restyled as the Windows XP Run As credential dialog. Enabled only while an XP theme is active (omarchy/xp/bin/xp-mode); inherits the authentication capability from omarchy.polkit.",
+  "kinds": [
+    "service"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "PolkitAgent.qml"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.polkit"
+  }
+}

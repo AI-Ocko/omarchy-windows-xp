@@ -1,0 +1,23 @@
+singleton XpScheme 1.0 XpScheme.qml
+XpArt 1.0 XpArt.qml
+XpButton 1.0 XpButton.qml
+XpWindow 1.0 XpWindow.qml
+XpTextField 1.0 XpTextField.qml
+XpGroupBox 1.0 XpGroupBox.qml
+XpBalloon 1.0 XpBalloon.qml
+XpScrollBar 1.0 XpScrollBar.qml
+XpLanguageBox 1.0 XpLanguageBox.qml
+XpTrackbar 1.0 XpTrackbar.qml
+XpCheckBox 1.0 XpCheckBox.qml
+XpTabs 1.0 XpTabs.qml
+XpComboBox 1.0 XpComboBox.qml
+XpListView 1.0 XpListView.qml
+XpMenu 1.0 XpMenu.qml
+XpToolTip 1.0 XpToolTip.qml
+XpLabel 1.0 XpLabel.qml
+XpEtched 1.0 XpEtched.qml
+XpRadio 1.0 XpRadio.qml
+XpPaneLink 1.0 XpPaneLink.qml
+XpPaneGroup 1.0 XpPaneGroup.qml
+XpPropertySheet 1.0 XpPropertySheet.qml
+XpProgress 1.0 XpProgress.qml

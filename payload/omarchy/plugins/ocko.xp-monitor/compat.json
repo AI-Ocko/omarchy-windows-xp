@@ -1,0 +1,29 @@
+{
+  "verified": "omarchy 4.0.6-1",
+  "stock": {
+    "plugins/panels/monitor/Model.js": "9dd9cb7f7dc11f16e571a48bf2a7c51be75ddaef3d4d5f35c511be8f91ecd2ec",
+    "plugins/panels/monitor/Panel.qml": "7ce864b8360625b008d5539adb555b3366513cdfd8fe57a93c64acef23d94bfa"
+  },
+  "shared": "1e73a03073c73d02a029ae323e4af4739975d96d259d586f8bba7525fb8cb1af",
+  "self": "dc76cad57d9364192d41a779ad6cf4007dd53781e94e2251d1e1c64d4a9e784e",
+  "external": [
+    "AlignHCenter",
+    "ElideRight",
+    "PlainText",
+    "WordWrap",
+    "abs",
+    "indexOf",
+    "isArray",
+    "map",
+    "mapToItem",
+    "push",
+    "replace",
+    "restart",
+    "round",
+    "sort",
+    "split",
+    "stop",
+    "stringify",
+    "trim"
+  ]
+}

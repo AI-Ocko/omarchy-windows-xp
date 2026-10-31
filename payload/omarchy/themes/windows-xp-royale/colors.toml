@@ -1,0 +1,42 @@
+# Windows XP (Royale) -- terminal palette.
+#
+# The ANSI slots are the legacy cmd.exe console palette, identical in all
+# five XP schemes, so terminals, nvim, btop and CLI output look like cmd.exe.
+# Selection is inverted (grey block, black text), the way cmd.exe "Mark" works.
+# Only `accent` changes per scheme: the active title-bar colour
+# (ini ActiveCaption; see omarchy/xp/palette.md).
+mode = "dark"
+
+accent    = "#335EA8"
+selection = "#C0C0C0"
+selection_background = "#C0C0C0"
+selection_foreground = "#000000"
+muted     = "#808080"
+
+background         = "#000000"
+dark_background    = "#000000"
+darker_background  = "#000000"
+# No console equivalent; navy, the EDIT.COM / QBasic surface colour.
+lighter_background = "#000080"
+
+foreground        = "#C0C0C0"
+dark_foreground   = "#808080"
+light_foreground  = "#C0C0C0"
+bright_foreground = "#FFFFFF"
+
+red     = "#800000"
+green   = "#008000"
+yellow  = "#808000"
+blue    = "#000080"
+magenta = "#800080"
+cyan    = "#008080"
+# The console has no orange or brown; both use its dark yellow.
+orange  = "#808000"
+brown   = "#808000"
+
+bright_red     = "#FF0000"
+bright_green   = "#00FF00"
+bright_yellow  = "#FFFF00"
+bright_blue    = "#0000FF"
+bright_magenta = "#FF00FF"
+bright_cyan    = "#00FFFF"

@@ -1,0 +1,17 @@
+#!/bin/bash
+# After `omarchy-update` (which runs `omarchy-hook post-update`): under a
+# Windows XP theme, re-run xp-mode on so its compatibility check drops any XP
+# plugin the new Omarchy broke, before the bar is next used. Also notices an
+# update that reset the boot splash (omarchy-plymouth-set makes `omarchy` the
+# default again) and says how to put XP back. Never runs sudo itself.
+theme=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
+case $theme in
+  windows-xp | windows-xp-*) "$HOME/.config/omarchy/xp/bin/xp-mode" on ;;
+esac
+
+if [[ -d /usr/share/plymouth/themes/windows-xp ]] && command -v plymouth-set-default-theme >/dev/null &&
+  [[ $(plymouth-set-default-theme) != windows-xp ]]; then
+  omarchy-notification-send -u normal "Windows XP boot screen was replaced" \
+    "An update made another boot splash the default. Run ~/.config/omarchy/xp/bin/xp-boot on to restore it."
+fi
+exit 0

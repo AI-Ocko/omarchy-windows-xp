@@ -1,0 +1,66 @@
+# Windows XP -- Task Manager look: bright green traces on black, dark-green
+# grid (Task Manager's graph grid is #008040), console grey text.
+
+# Main background, empty for terminal default, need to be empty if you want transparent background
+theme[main_bg]="#000000"
+
+# Main text color
+theme[main_fg]="#C0C0C0"
+
+# Title color for boxes
+theme[title]="#FFFFFF"
+
+# Highlight color for keyboard shortcuts
+theme[hi_fg]="#00FF00"
+
+# Background color of selected item in processes box
+theme[selected_bg]="#000080"
+
+# Foreground color of selected item in processes box
+theme[selected_fg]="#FFFFFF"
+
+# Color of inactive/disabled text
+theme[inactive_fg]="#808080"
+
+# Misc colors for processes box including mini cpu graphs, details memory graph and details status text
+theme[proc_misc]="#00FF00"
+
+# Box outline and divider line color
+theme[cpu_box]="#008040"
+theme[mem_box]="#008040"
+theme[net_box]="#008040"
+theme[proc_box]="#008040"
+theme[div_line]="#008040"
+
+# Gradient for all meters and graphs
+theme[temp_start]="#00FF00"
+theme[temp_mid]="#FFFF00"
+theme[temp_end]="#FF0000"
+
+theme[cpu_start]="#00FF00"
+theme[cpu_mid]="#00FF00"
+theme[cpu_end]="#00FF00"
+
+theme[free_start]="#00FF00"
+theme[free_mid]="#00FF00"
+theme[free_end]="#00FF00"
+
+theme[cached_start]="#00FF00"
+theme[cached_mid]="#00FF00"
+theme[cached_end]="#00FF00"
+
+theme[available_start]="#00FF00"
+theme[available_mid]="#00FF00"
+theme[available_end]="#00FF00"
+
+theme[used_start]="#00FF00"
+theme[used_mid]="#00FF00"
+theme[used_end]="#00FF00"
+
+theme[download_start]="#00FF00"
+theme[download_mid]="#00FF00"
+theme[download_end]="#00FF00"
+
+theme[upload_start]="#00FF00"
+theme[upload_mid]="#00FF00"
+theme[upload_end]="#00FF00"

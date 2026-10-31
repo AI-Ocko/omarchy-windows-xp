@@ -1,0 +1,9 @@
+[Plymouth Theme]
+Name=Windows XP
+Description=Windows XP boot screen, Log On to Windows disk prompt, and shutdown screens.
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/windows-xp
+ScriptFile=/usr/share/plymouth/themes/windows-xp/windows-xp.script
+ConsoleLogBackgroundColor=0x000000
