@@ -2,8 +2,9 @@
 
 The Windows XP look for [Omarchy](https://omarchy.org) 4 (Quattro): five
 colour schemes (Luna Blue, Olive Green, Silver, Royale, Zune), the taskbar and
-Start menu, XP-style tray pop-ups and dialogs, title bars with real XP caption
-buttons, cursors, fonts, GTK theme, a cmd.exe terminal, sounds, the 3D Pipes
+Start menu, XP-style tray pop-ups and dialogs (with XP's own battery meter),
+title bars with real XP caption buttons, the Welcome screen as the lock
+screen, cursors, fonts, GTK theme, a cmd.exe terminal, sounds, the 3D Pipes
 screensaver and an optional XP boot screen. It changes nothing else about your
 desktop, and any non-XP theme puts the stock Omarchy look back.
 
@@ -15,9 +16,10 @@ From a terminal in your Omarchy session, as yourself (not root):
 ./install.sh            # or: ./install.sh --dry-run  to see every step first
 ```
 
-It asks for sudo once for packages (pacman, then the AUR title-bar plugin via
-`yay`), downloads Microsoft's files (below), and ends on
-`omarchy theme set windows-xp`. The boot screen is offered last, behind its own
+It asks for sudo only if a package it needs is missing (pacman; nothing comes
+from the AUR), downloads Microsoft's files (below), builds the title-bar plugin
+in your account, and ends on `omarchy theme set windows-xp`. Run it from a
+terminal: if a package is missing it needs one for the sudo password. The boot screen is offered last, behind its own
 `[y/N]`. Open a new terminal afterwards; reboot once if you took the boot
 screen.
 
@@ -37,6 +39,14 @@ sudo commands left: turning the boot screen off and removing the packages.
 - `~/.local/share/{fonts/xp,themes/Windows XP *,icons/windows-xp*}`,
   `~/.local/lib/hyprbars-xp`, and a `xp-sizes.path` systemd user unit that
   keeps the XP terminal font in step with `omarchy display text size`.
+- While an XP theme is on, `~/.config/omarchy/shell.json` selects the XP bar
+  and the XP versions of the menu, notifications, OSD, idle, polkit and lock
+  plugins, and disables the ones they replace, including your own clones of
+  them (e.g. a `you.lock` cloned from `omarchy.lock`), so there is only ever
+  one lock screen and one polkit agent. Leaving XP puts both lists back
+  exactly. The lock is swapped only while unlocked.
+- `~/.config/gtk-4.0/gtk.css` (a link, while XP is on); the folder is created
+  if it was missing and removed again when XP is turned off.
 - Text size is Omarchy's: XP pins no size of its own.
 
 ## Microsoft's files are not in this repository
@@ -65,10 +75,15 @@ None of it is ever committed here.
   its stock Omarchy version keeps working, and you get one notification naming
   it. If the taskbar itself fails, you get the stock bar with the rest of XP.
 - **Omarchy 5:** a new port, not promised.
-- **Hyprland:** the title bars need the AUR `hyprland-plugin-hyprbars` to match
-  your Hyprland (0.56.x today). Re-run `~/.config/omarchy/xp/hyprbars/build`
-  after a Hyprland update; without a match, windows simply keep their stock
-  borders.
+- **Hyprland:** the XP title bars are hyprbars with XP's caption buttons,
+  built in your account for the exact Hyprland you run (0.56.x today; the
+  installer checks the headers match). After a Hyprland update the build
+  repeats by itself at your next login (or `omarchy update`, or the next
+  switch to an XP theme), in the background; until then windows have plain
+  title bars. If a rebuild fails you get one notification and the log is
+  `~/.local/state/omarchy/xp/hyprbars-build.log`. By hand:
+  `~/.config/omarchy/xp/hyprbars/build && hyprctl reload`. The AUR
+  `hyprland-plugin-hyprbars` is not used.
 
 ## Boot screen warning
 

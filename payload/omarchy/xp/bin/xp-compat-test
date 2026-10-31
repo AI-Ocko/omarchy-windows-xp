@@ -193,6 +193,8 @@ def main():
     ap.add_argument("--omarchy", type=Path, default=Path(os.environ.get("OMARCHY_PATH") or "/usr/share/omarchy"))
     ap.add_argument("--record", action="store_true", help="rewrite compat.json for each plugin that passes")
     a = ap.parse_args()
+    # Absolute: the compile check hands the files to quickshell as file:// URLs.
+    a.plugins, a.omarchy = a.plugins.absolute(), a.omarchy.absolute()
 
     shell = a.omarchy / "shell"
     plugins = sorted(p for p in a.plugins.glob("ocko.xp-*") if (p / "manifest.json").is_file())

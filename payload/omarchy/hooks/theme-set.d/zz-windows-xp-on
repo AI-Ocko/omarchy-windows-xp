@@ -1,0 +1,13 @@
+#!/bin/bash
+# Windows XP on for windows-xp / windows-xp-*. Named to run LAST among the
+# theme-set hooks (omarchy-hook runs them in name order): other themes' hooks
+# undo their own changes first (e.g. a hook that disables its shell clones
+# for every theme but its own), so XP saves a clean pre-XP state and nothing
+# re-enables a stock plugin after XP has picked its clones. Leaving XP is
+# 00-windows-xp-off, which runs FIRST. omarchy-hook runs this as
+# `bash <file> <slug>`, with stdout discarded; the logic and its error log
+# live in xp-mode.
+case $1 in
+  windows-xp | windows-xp-*) exec "$HOME/.config/omarchy/xp/bin/xp-mode" on ;;
+esac
+exit 0

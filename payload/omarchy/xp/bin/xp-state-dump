@@ -24,5 +24,8 @@ for f in "$cfg/starship.toml" "$cfg/foot/foot.ini" "$cfg/tmux/tmux.conf" \
 done
 find "$cfg/zen" -maxdepth 3 -path '*/chrome/*' -name 'user*.css' -print0 2>/dev/null | sort -z |
   while IFS= read -r -d '' f; do echo "zen ${f#$cfg/zen/}: $(sum "$f") $( [[ -L $f ]] && echo "-> $(readlink "$f")")"; done
+echo "file .bashrc: $(sum ~/.bashrc)"
+echo "dir gtk-4.0: $( [[ -d $cfg/gtk-4.0 ]] && echo present || echo absent)"
+echo "hypr toggles: $(ls "$state/toggles/hypr" 2>/dev/null | tr '\n' ' ')"
 echo "xp saved-state: $( [[ -e $state/xp/saved-state.json ]] && echo present || echo absent)"
 echo "git diff (tracked): $(git -C "$cfg" diff | sha256sum | cut -c1-16)"

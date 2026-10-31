@@ -3,11 +3,15 @@
 # Windows XP theme, re-run xp-mode on so its compatibility check drops any XP
 # plugin the new Omarchy broke, before the bar is next used. Also notices an
 # update that reset the boot splash (omarchy-plymouth-set makes `omarchy` the
-# default again) and says how to put XP back. Never runs sudo itself.
+# default again) and says how to put XP back, and rebuilds the XP title-bar
+# plugin for a new Hyprland (xp-hyprbars-heal). Never runs sudo itself.
 theme=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
 case $theme in
   windows-xp | windows-xp-*) "$HOME/.config/omarchy/xp/bin/xp-mode" on ;;
 esac
+# A Hyprland update outdates the caption-button hyprbars; rebuild it in the
+# background (xp-mode on does this too, but only under an XP theme).
+setsid -f "$HOME/.config/omarchy/xp/bin/xp-hyprbars-heal" </dev/null >/dev/null 2>&1
 
 if [[ -d /usr/share/plymouth/themes/windows-xp ]] && command -v plymouth-set-default-theme >/dev/null &&
   [[ $(plymouth-set-default-theme) != windows-xp ]]; then

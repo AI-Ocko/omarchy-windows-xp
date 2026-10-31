@@ -272,6 +272,7 @@ sorted `sha256sum` listing.
 | `binaries/shell32.dll` | – | `7c201e812138…` | `ISO/I386/SHELL32.DL_` via cab (download sha256 `ad0c40de296b…`) |
 | `binaries/user32.dll` | – | `acd0ae7b4d5f…` | `ISO/I386/USER32.DL_` via cab (download sha256 `a9e1eec98d0b…`) |
 | `binaries/stobject.dll` | – | `670006280ca9…` | `ISO/I386/STOBJECT.DL_` via cab (download sha256 `fe673eb3774f…`) |
+| `binaries/batmeter.dll` | – | `76f8ae268043…` | `ISO/I386/BATMETER.DL_` via cab (download sha256 `24f1c53a0a2d…`) |
 | `binaries/netshell.dll` | – | `3c0bfa381cbc…` | `ISO/I386/NETSHELL.DL_` via cab (download sha256 `18f546092e7c…`) |
 | `binaries/wuauclt.exe` | – | `20524aa4a86a…` | `ISO/I386/WUAUCLT.EX_` via cab (download sha256 `e98fbeec7d17…`) |
 | `binaries/mmsys.cpl` | – | `bb9b488afc5e…` | `ISO/I386/MMSYS.CP_` via cab (download sha256 `aef3f77813c1…`) |
@@ -305,6 +306,7 @@ sorted `sha256sum` listing.
 | `graphics/shell32-ico`/ | – | `7c7698d32824…` | every `GROUP_ICON` of `binaries/shell32.dll` as one-image `.ico` at 16/32/48 px (deepest colour depth), `<size>/<id>.ico` |
 | `graphics/user32-ico`/ | – | `4ac8bbda8868…` | the same for `binaries/user32.dll` (the message-box icons) |
 | `graphics/stobject-ico`/ | – | `369261852d99…` | the same for `binaries/stobject.dll`: XP's systray icons (volume 230, muted 231, AC power 200, safely remove 210) |
+| `graphics/batmeter/` | – | `b124e6c18e1e…` | `binaries/batmeter.dll` BITMAP 300 (321x32, 4 bpp RLE4) cut by `xptool.py strip` into ten 32x32 frames `32/<n>.png`, #ff00ff transparent. The notification-area battery: 0 high, 1 medium, 2 low, 3 no battery (red X), 4 unknown, 5 empty, 6 AC plug, 7 charging bolt, 8 plug + battery, 9 alt full. Identical, pixel for pixel, to `magick 300.bmp -crop 32x32+N*32+0 +repage -transparent '#ff00ff'`. BITMAP 301 (the 161x16 strip) does not cut cleanly and is not used. |
 | `graphics/netshell-ico`/ | – | `58766159d73e…` | the same for `binaries/netshell.dll`: network connection tray icons (LAN 190–193, disconnected 195, limited 196) |
 | `graphics/wuauclt-ico`/ | – | `c8e734603268…` | the same for `binaries/wuauclt.exe`: the Automatic Updates tray icon |
 | `graphics/mmsys-ico`/ | – | `ecf75c3b04db…` | the same for `binaries/mmsys.cpl` (microphone 4380) |

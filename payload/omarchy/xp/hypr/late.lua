@@ -60,7 +60,7 @@ o.window({ tag = "default-opacity" }, { opacity = "1 1" })
 local xp_pipes = { class = "^TopLevelShell$", title = "^Pipes: .*$" }
 o.window(xp_pipes, { float = true, fullscreen = true })
 
--- XP title bars (hyprbars, /usr/lib/libhyprbars.so from omarchy/xp/bin/xp-install-packages).
+-- XP title bars (hyprbars: our build in ~/.local/lib/hyprbars-xp, else the AUR one if installed).
 -- Declared only here, so leaving XP stops declaring it and Hyprland unloads it
 -- on that same reload. hyprbars draws flat fills and round buttons only: no
 -- vertical gradient, no title icon, no rounded-square buttons.
@@ -91,7 +91,21 @@ end
 local xp_art = read_line(xp_bars .. "/hyprland-version") == hl.version() and io.open(xp_bars .. "/libhyprbars.so", "r") ~= nil
 local art = os.getenv("HOME") .. "/.config/omarchy/xp/assets/graphics/taskbar/" .. (schemes[name] and name or "windows-xp") .. "/"
 
-hl.plugin.load(xp_art and xp_bars .. "/libhyprbars.so" or "/usr/lib/libhyprbars.so")
+-- The packaged plugin is optional now (install.sh builds ours, no AUR):
+-- without either, windows keep their stock borders and no title bar.
+local stock_bars = "/usr/lib/libhyprbars.so"
+local function exists(path)
+	local f = io.open(path, "r")
+	if f then
+		f:close()
+	end
+	return f ~= nil
+end
+if xp_art then
+	hl.plugin.load(xp_bars .. "/libhyprbars.so")
+elseif exists(stock_bars) then
+	hl.plugin.load(stock_bars)
+end
 
 -- The plugin's keys and rule effects exist only after it loads (the second
 -- parse of this reload), so everything else is guarded.

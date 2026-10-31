@@ -143,6 +143,10 @@ hypr_reload() {
 }
 
 hypr_apply() {
+  # Rebuild the caption-button hyprbars if a Hyprland update outdated it. In
+  # the background, detached, and without our lock fd 9 (a build takes a
+  # minute; theme switches must not wait on it).
+  setsid -f "$XP_DIR/bin/xp-hyprbars-heal" </dev/null >/dev/null 2>&1 9>&-
   cmp -s "$LATE" "$TOGGLE" && return 0
   cp "$LATE" "$TOGGLE.tmp" && mv "$TOGGLE.tmp" "$TOGGLE" || return 1
   hypr_reload
@@ -170,6 +174,13 @@ SHELL_KEYS='{
 
 shell_save() { jq -c "$SHELL_KEYS" "$SHELL_JSON"; }
 
+# {"<plugin id>": "<omarchy.clonedFrom or null>"} for every installed plugin.
+cloned_map() {
+  local m=("$HOME"/.config/omarchy/plugins/*/manifest.json)
+  [[ -e ${m[0]} ]] || { echo '{}'; return 0; }
+  jq -cs 'map(select(type == "object" and (.id | type) == "string") | {(.id): (.omarchy.clonedFrom // null)}) | add // {}' "${m[@]}"
+}
+
 # XP selects the XP taskbar (omarchy/plugins/ocko.xp-taskbar) and swaps five
 # first-party plugins for their XP clones, which exist only for this: a
 # clone is enabled by its plugins[] entry, and the stock one it replaces
@@ -179,13 +190,21 @@ shell_save() { jq -c "$SHELL_KEYS" "$SHELL_JSON"; }
 XP_BAR=ocko.xp-taskbar
 XP_CLONES='[["ocko.xp-menu", "omarchy.menu"], ["ocko.xp-polkit", "omarchy.polkit"],
             ["ocko.xp-notifications", "omarchy.notifications"], ["ocko.xp-osd", "omarchy.osd"],
-            ["ocko.xp-idle", "omarchy.idle"]]'
+            ["ocko.xp-idle", "omarchy.idle"], ["ocko.xp-lock", "omarchy.lock"]]'
 # Bar-widget clones are enabled the same way but the stock widget is NOT
 # disabled: bar.layout keeps naming the stock id, the XP taskbar puts the
 # enabled clone in its place (Bar.qml xpCloneEntry), and resolveEnabledId()
 # sends `omarchy-shell shell toggle omarchy.<id>` to the clone. A stock bar
 # (no XP) never sees them, because restore puts plugins[] back.
 XP_WIDGET_CLONES='["ocko.xp-monitor", "ocko.xp-audio", "ocko.xp-network", "ocko.xp-clock", "ocko.xp-tray", "ocko.xp-power", "ocko.xp-weather", "ocko.xp-bluetooth", "ocko.xp-agents"]'
+# Rivals: the user's own clones of the same stock plugin (manifest
+# omarchy.clonedFrom, e.g. a you.polkit cloned from omarchy.polkit).
+# One listed in plugins[] would stay enabled next to the XP clone: two
+# polkit agents or two lock services at once, and resolveEnabledId() would
+# route omarchy.* calls to whichever it meets first. So every rival of an
+# enabled XP clone goes in disabledPlugins[] as well (isDisabled() wins over
+# plugins[]); plugins[] itself keeps its entries, and restore puts both keys
+# back exactly. $cloned maps each installed plugin id to its clonedFrom.
 # Order-preserving: entries already there keep their place; missing ones are appended.
 # $failed (from compat_check) lists XP plugins the installed Omarchy broke:
 # they are dropped from plugins[] (and their stock service comes back out of
@@ -193,11 +212,17 @@ XP_WIDGET_CLONES='["ocko.xp-monitor", "ocko.xp-audio", "ocko.xp-network", "ocko.
 # pre-XP keys). A failed taskbar keeps bar.id on the stock bar and drops the
 # widget clones too, since only the XP taskbar places them.
 XP_CONFIG='($failed | index($bar) | not) as $bar_ok
+  | [(.plugins // [])[] | if type == "object" then .id else . end] as $listed
   | [$clones[] | select(.[0] as $c | $failed | index($c) | not)] as $on
   | [$clones[] | select(.[0] as $c | $failed | index($c))] as $off
   | (if $bar_ok then [$widgets[] | select(. as $c | $failed | index($c) | not)] else [] end) as $won
+  | def rivals($pairs): [$pairs[] | .[0] as $c | .[1] as $s
+      | select($s != null) | $cloned | to_entries[]
+      | select(.value == $s and .key != $c and (.key as $k | $listed | index($k))) | .key];
+    rivals($on + [$won[] | [., $cloned[.]]]) as $rivals
+  | rivals($off + [($widgets - $won)[] | [., $cloned[.]]]) as $off_rivals
   | ([$off[] | .[0]] + ($widgets - $won)) as $drop
-  | ([$off[] | .[1]] - ($orig.disabledPlugins.v // [])) as $undisable
+  | (([$off[] | .[1]] + $off_rivals) - ($orig.disabledPlugins.v // []) - $rivals) as $undisable
   | (if $bar_ok then .bar.id = $bar
      elif (.bar | type) == "object" and .bar.id == $bar then
        (if $orig.bar_id then .bar.id = $orig.bar_id.v else del(.bar.id) end)
@@ -205,7 +230,8 @@ XP_CONFIG='($failed | index($bar) | not) as $bar_ok
   | .plugins = ([(.plugins // [])[] | select((if type == "object" then .id else . end) as $i | $drop | index($i) | not)] as $p
       | $p + [([$on[] | .[0]] + $won)[] as $c | select([$p[] | if type == "object" then .id else . end] | index($c) | not) | {id: $c}])
   | .disabledPlugins = ([(.disabledPlugins // [])[] | select(. as $s | $undisable | index($s) | not)] as $d
-      | $d + [$on[] | .[1] as $s | select($d | index($s) | not) | $s])'
+      | $d + ([$on[] | .[1]] + $rivals | reduce .[] as $s ([]; if index($s) then . else . + [$s] end)
+              | map(select(. as $s | $d | index($s) | not))))'
 
 # ------------------------------------------------------------ compatibility
 # Every XP plugin copies stock Omarchy code and calls stock APIs, so an
@@ -228,6 +254,13 @@ compat_check() {
     while read -r id st _; do [[ $st == fail ]] && ids+=("$id"); done <<<"$out"
     ((${#ids[@]})) && log "xp-compat-test: $(grep -v ' ok$' <<<"$out" | tr '\n' ';')"
   fi
+  # A clone that is not installed at all counts as failed: enabling it would
+  # disable the stock plugin (and the user's own clones of it) for nothing,
+  # which for the lock would mean no lock screen.
+  for id in "$XP_BAR" $(jq -r '.[][0]' <<<"$XP_CLONES") $(jq -r '.[]' <<<"$XP_WIDGET_CLONES"); do
+    [[ -r $XP_DIR/../plugins/$id/manifest.json ]] && continue
+    [[ " ${ids[*]} " == *" $id "* ]] || { ids+=("$id"); log "$id is not installed; its stock plugin stays in use"; }
+  done
   XP_FAILED=$(printf '%s\n' "${ids[@]}" | jq -R . | jq -cs 'map(select(length > 0))')
   if ((${#ids[@]} == 0)); then
     rm -f "$COMPAT_NOTIFIED"
@@ -254,11 +287,18 @@ compat_check() {
 # Phase B way (enable + rescan), and the clones wait for the next unlocked
 # `xp-mode on`.
 shell_apply() {
-  local locked orig=null
+  local locked orig=null cloned
   compat_check
   [[ -r $SAVED ]] && orig=$(jq -c '.shell // null' "$SAVED")
+  cloned=$(cloned_map) || return 1
+  # The XP taskbar reads this to place its widget clones over bar.layout
+  # entries that name the user's own clones (you.power cloned from
+  # omarchy.power -> ocko.xp-power): a plugin bar cannot see other manifests.
+  [[ $(cat "$STATE_DIR/clones.json" 2>/dev/null) == "$cloned" ]] ||
+    { printf '%s\n' "$cloned" >"$STATE_DIR/clones.json.tmp" && mv "$STATE_DIR/clones.json.tmp" "$STATE_DIR/clones.json"; }
   jq --indent 2 --arg bar "$XP_BAR" --argjson clones "$XP_CLONES" --argjson widgets "$XP_WIDGET_CLONES" \
-    --argjson failed "$XP_FAILED" --argjson orig "$orig" "$XP_CONFIG" "$SHELL_JSON" >"$SHELL_JSON.xp-tmp" || return 1
+    --argjson failed "$XP_FAILED" --argjson orig "$orig" --argjson cloned "$cloned" \
+    "$XP_CONFIG" "$SHELL_JSON" >"$SHELL_JSON.xp-tmp" || return 1
   # Quoted right-hand side: unquoted, [[ == ]] reads it as a glob pattern and
   # JSON's brackets never match (it restarted the shell on every XP -> XP switch).
   if [[ $(jq -cS . "$SHELL_JSON.xp-tmp") == "$(jq -cS . "$SHELL_JSON")" ]]; then
@@ -306,9 +346,32 @@ shell_restore() {
 # it, then the plugin bar Loader's onActiveChanged clears it), which breaks
 # `omarchy-shell shell toggle <panel>` hotkeys and the notification offset.
 # Never while the session is locked.
+#
+# omarchy-restart-shell is not serialised: two overlapping calls both kill
+# every instance, both see none left, and both launch one, so the session
+# ends with two shells (two bars, two lock services, two polkit agents).
+# Another theme's own hook can restart the shell at the same moment (one that
+# switches its icon font does), so ours runs under a lock and a detached check
+# watches for 30 s afterwards: two shells seen twice in a row, while
+# unlocked, get one more (locked) restart, which leaves one.
+SHELL_RESTART_LOCK=${XDG_RUNTIME_DIR:-/tmp}/omarchy-shell-restart.lock
+
 shell_restart() {
   if [[ $(timeout 3 omarchy-shell lock isLocked 2>/dev/null) == false ]]; then
-    omarchy-restart-shell >/dev/null 2>&1 || log "omarchy-restart-shell failed; run it by hand to load the right plugins"
+    flock "$SHELL_RESTART_LOCK" omarchy-restart-shell >/dev/null 2>&1 ||
+      log "omarchy-restart-shell failed; run it by hand to load the right plugins"
+    setsid -f bash -c '
+      count() { quickshell list -a -j 2>/dev/null | jq --arg d "$1" "[.[] | select(.config_path | startswith(\$d))] | length"; }
+      seen=0
+      for _ in $(seq 15); do
+        sleep 2
+        n=$(count "$1")
+        if ((${n:-0} > 1)); then seen=$((seen + 1)); else seen=0; fi
+        ((seen < 2)) && continue
+        [[ $(timeout 3 omarchy-shell lock isLocked 2>/dev/null) == false ]] || exit 0
+        printf "%(%F %T)T xp-mode: two Omarchy shells after overlapping restarts; restarting once\n" -1 >>"$2"
+        exec flock "$3" omarchy-restart-shell
+      done' _ "${OMARCHY_PATH:-/usr/share/omarchy}/shell/" "$LOG" "$SHELL_RESTART_LOCK" </dev/null >/dev/null 2>&1 9>&-
   else
     log "session locked or shell not answering: skipped shell restart; run omarchy-restart-shell"
   fi
@@ -388,6 +451,16 @@ files_apply() {
         : >"$aside.absent" || { rc=1; continue; }
       fi
     fi
+    # A parent directory XP has to create (gtk-4.0/ on a system that never
+    # had one) is recorded in the .absent marker, so `off` removes it again.
+    # Also covers a marker left empty by an earlier version that never
+    # created the directory.
+    if [[ -e $aside.absent && ! -s $aside.absent && ! -d ${path%/*} ]]; then
+      local d=${path%/*} created=""
+      while [[ $d == /?* && ! -d $d ]]; do created=$d; d=${d%/*}; done
+      printf '%s\n' "$created" >"$aside.absent" || { rc=1; continue; }
+    fi
+    [[ $kind == none ]] || mkdir -p "${path%/*}" || { log "could not create ${path%/*}"; rc=1; continue; }
     case $kind in
       none) rm -f "$path" ;;
       copy) rm -f "$path" && cp "$src" "$path" ;;
@@ -408,7 +481,19 @@ files_restore() {
     if [[ $path == *.absent ]]; then
       path=${path%.absent}
       path=${path//%//}
-      rm -f "$path" && rm -f "$aside" || { log "could not remove the XP $path"; rc=1; }
+      local created="" d
+      read -r created <"$aside"
+      rm -f "$path" || { log "could not remove the XP $path"; rc=1; continue; }
+      # Remove the directories XP created, innermost first, only while empty
+      # (anything put there since is left alone, with its directory).
+      if [[ -n $created ]]; then
+        d=${path%/*}
+        while [[ $d == "$created" || $d == "$created"/* ]]; do
+          rmdir "$d" 2>/dev/null || break
+          d=${d%/*}
+        done
+      fi
+      rm -f "$aside" || { log "could not remove $aside"; rc=1; }
     else
       path=${path//%//}
       rm -f "$path" && mv -T "$aside" "$path" || { log "could not restore $path"; rc=1; }

@@ -40,7 +40,9 @@ if [[ ! -e $MARKER ]]; then
 fi
 
 # 1. Leave XP the normal way first: a non-XP theme runs `xp-mode off`, which
-#    restores gsettings, shell.json, the swapped files and the Hyprland toggle.
+#    restores gsettings, shell.json (bar, plugins, disabledPlugins: the XP
+#    lock and polkit go, your own come back), the swapped files (and removes
+#    a ~/.config/gtk-4.0 it created) and the Hyprland toggle.
 say "Theme"
 cur=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
 if [[ $cur == windows-xp || $cur == windows-xp-* ]]; then
@@ -90,6 +92,8 @@ targets=()
 for d in "$PAYLOAD"/omarchy/themes/* "$PAYLOAD"/omarchy/plugins/*; do targets+=("$CFG/omarchy/${d#"$PAYLOAD"/omarchy/}"); done
 while IFS= read -r f; do targets+=("$CFG/omarchy/${f#"$PAYLOAD"/omarchy/}"); done < <(find "$PAYLOAD/omarchy/hooks" -type f)
 remove "${targets[@]}"
+# The theme-set hook's name before 1.1.0.
+[[ -e $CFG/omarchy/hooks/theme-set.d/windows-xp ]] && remove "$CFG/omarchy/hooks/theme-set.d/windows-xp"
 # omarchy/xp last: it holds the marker, and Microsoft's downloaded files (assets/).
 remove "$XP"
 remove "$DATA/fonts/xp" \
@@ -105,5 +109,9 @@ if [[ -d /usr/share/plymouth/themes/windows-xp ]]; then
   echo "The XP boot splash is installed. Put Omarchy's back with:"
   echo "  $PAYLOAD/omarchy/xp/bin/xp-boot off"
 fi
-echo "The packages only XP uses (keep any you use for something else):"
-echo "  sudo pacman -Rns hyprland-plugin-hyprbars xscreensaver"
+echo "The package only XP uses (keep it if you use it for something else):"
+echo "  sudo pacman -Rns xscreensaver"
+if pacman -Q hyprland-plugin-hyprbars >/dev/null 2>&1; then
+  echo "and, if you installed it for XP (an earlier XP install, or xp-install-packages by hand):"
+  echo "  sudo pacman -Rns hyprland-plugin-hyprbars"
+fi

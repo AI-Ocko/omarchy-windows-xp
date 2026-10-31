@@ -6,8 +6,8 @@
 #              the diff it would make; change nothing (no packages, no sudo, no
 #              systemd, no theme switch, no downloads).
 #
-# Run it as yourself. It asks for sudo for packages (pacman, then yay) and, only
-# if you say yes at the end, for the boot splash.
+# Run it as yourself. It asks for sudo only for missing packages (pacman) and,
+# only if you say yes at the end, for the boot splash. Nothing from the AUR.
 set -uo pipefail
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -39,15 +39,19 @@ command -v omarchy >/dev/null && [[ -d ${OMARCHY_PATH:-/usr/share/omarchy} ]] ||
 command -v foot >/dev/null || die "foot (Omarchy's terminal) not found"
 echo "Omarchy $(omarchy version 2>/dev/null || echo '?'), $(hyprctl version -j | jq -r '"Hyprland " + .tag')"
 
+# Title bars: our own user-level build of hyprbars with the XP caption buttons
+# (omarchy/xp/hyprbars/build). It needs the Hyprland headers of the *running*
+# Hyprland and nothing from the AUR. The AUR package is not installed from
+# here: yay compiles it against the same headers, so it could only load where
+# this build already works, and the AUR moves to the next Hyprland before Arch
+# does (0.57.0 while Arch shipped 0.56.2), so `yay -S` would try to install a
+# plugin the running Hyprland refuses.
 TITLEBARS=1
 hv=$(hyprctl version -j | jq -r .tag)
+hc=$(hyprctl version -j | jq -r .commit)
 if [[ $hv != v0.56.* ]]; then
   TITLEBARS=0
-  warn "Hyprland is $hv: the XP title bars need 0.56.x (the hyprbars plugin is version-locked), so they are skipped. Everything else installs."
-fi
-if ((TITLEBARS)) && ! command -v yay >/dev/null; then
-  TITLEBARS=0
-  warn "yay not found: the XP title bars (hyprbars from the AUR) are skipped."
+  warn "Hyprland is $hv: the XP caption-button patch targets 0.56.x, so XP title bars are skipped. Everything else installs."
 fi
 
 echo "Compatibility of each XP part with this Omarchy (failing parts fall back to stock):"
@@ -76,11 +80,26 @@ echo "Install targets: ${#targets[@]}, none foreign."
 
 # ------------------------------------------------------------------- packages
 say "Packages"
-run sudo pacman -S --needed cabextract 7zip libarchive imagemagick jq python cmake gcc make pkgconf curl xscreensaver ||
-  die "pacman failed"
+PKGS=(cabextract 7zip libarchive imagemagick jq python cmake gcc make pkgconf curl git xscreensaver)
+# sudo only for what is missing, so a re-run with everything present needs no
+# password (and works from a session without a terminal).
+mapfile -t missing < <(pacman -T "${PKGS[@]}")
+if ((${#missing[@]} == 0)); then
+  echo "all present: ${PKGS[*]}"
+elif ((!DRY)) && [[ ! -t 0 ]] && ! sudo -n true 2>/dev/null; then
+  die "packages to install (${missing[*]}) need sudo, and there is no terminal to ask for the password: run ./install.sh from a terminal"
+else
+  run sudo pacman -S --needed "${missing[@]}" || die "pacman failed"
+fi
 if ((TITLEBARS)); then
-  # hyprland-plugin-hyprbars from the AUR (and xscreensaver, already present).
-  run "$PAYLOAD/omarchy/xp/bin/xp-install-packages" || { warn "hyprbars install failed: title bars skipped"; TITLEBARS=0; }
+  hdr=$(pkg-config --modversion hyprland 2>/dev/null)
+  hdr_commit=$(sed -n 's/^#define GIT_COMMIT_HASH *"\(.*\)"/\1/p' /usr/include/hyprland/src/version.h 2>/dev/null)
+  if [[ "v$hdr" != "$hv" || $hdr_commit != "$hc" ]]; then
+    TITLEBARS=0
+    warn "the Hyprland headers (v${hdr:-none}) are not the running Hyprland ($hv): log out and back in after the Hyprland update, then re-run. XP title bars are skipped until then."
+  else
+    echo "XP title bars: Hyprland $hv headers match, the caption-button build will run"
+  fi
 fi
 
 # ---------------------------------------------------------------------- files
@@ -97,6 +116,12 @@ while IFS= read -r f; do
   run mkdir -p "$(dirname "$CFG/omarchy/$rel")"
   run cp -a "$f" "$CFG/omarchy/$rel"
 done < <(find "$PAYLOAD/omarchy/hooks" -type f)
+# Files earlier versions installed that this one no longer has. The XP
+# theme-set hook was split into 00-windows-xp-off (runs first) and
+# zz-windows-xp-on (runs last); the old one would still run in between.
+for f in "$CFG/omarchy/hooks/theme-set.d/windows-xp"; do
+  [[ -e $f ]] && run rm -f "$f"
+done
 run cp -a "$PAYLOAD/systemd/user/xp-sizes.path" "$PAYLOAD/systemd/user/xp-sizes.service" "$CFG/systemd/user/"
 printf '+ write %s\n' "$MARKER"
 ((DRY)) || head -1 "$HERE/VERSION" >"$MARKER"
@@ -183,7 +208,18 @@ say "Microsoft's files (downloaded here, never shipped) and derived art"
 run "$XP/fetch-assets.sh" || die "fetch-assets.sh failed (see above); nothing switched to XP yet. Re-run ./install.sh to retry."
 if ((TITLEBARS)); then
   say "XP caption buttons (patched hyprbars, user-level)"
-  run "$XP/hyprbars/build" || warn "hyprbars build failed: title bars use plain buttons"
+  BARS_LOG=$HOME/.local/state/omarchy/xp/hyprbars-build.log
+  printf '+ %s >%s 2>&1\n' "$XP/hyprbars/build" "$BARS_LOG"
+  if ((!DRY)); then
+    mkdir -p "${BARS_LOG%/*}"
+    if "$XP/hyprbars/build" >"$BARS_LOG" 2>&1; then
+      tail -n 1 "$BARS_LOG"
+    else
+      warn "THE XP CAPTION-BUTTON BUILD FAILED; windows get plain title bars. Last lines of $BARS_LOG:"
+      tail -n 15 "$BARS_LOG" | sed 's/^/    /' >&2
+      warn "fix the cause above, then run: $XP/hyprbars/build && hyprctl reload"
+    fi
+  fi
 fi
 
 # ------------------------------------------------------------------- activate
@@ -221,6 +257,12 @@ if ((DRY)); then
 fi
 "$XP/bin/xp-mode" status
 echo "hyprctl configerrors: $(hyprctl configerrors | tr -s '\n' ' ')"
+bars=$(grep -o '[^ ]*hyprbars[^ ]*\.so' "/proc/$(pidof Hyprland)/maps" 2>/dev/null | sort -u | tr '\n' ' ')
+case $bars in
+  *"$HOME/.local/lib/hyprbars-xp/"*) echo "title bars: XP caption buttons ($bars)" ;;
+  "") warn "title bars: no hyprbars loaded in Hyprland" ;;
+  *) warn "title bars: Hyprland has $bars, not the XP build: plain buttons (see $HOME/.local/state/omarchy/xp/hyprbars-build.log)" ;;
+esac
 python3 "$XP/bin/xp-compat-test" | sed 's/^/  /'
 fc-list : family | grep -i -m1 tahoma || warn "Tahoma is not installed (fetch-assets.sh)"
 grep -m1 '^font=' "$HOME/.local/state/omarchy/current/theme/foot.ini"

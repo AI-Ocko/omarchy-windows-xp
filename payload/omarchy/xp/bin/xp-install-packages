@@ -1,27 +1,39 @@
 #!/bin/bash
-# The only part of the XP theme that needs root. Run it yourself, as yourself
-# (not with sudo): yay builds AUR packages as the user and asks for sudo only
-# to install. Nothing else in omarchy/xp/ ever calls sudo.
+# Optional, by hand only: the AUR hyprland-plugin-hyprbars as a plain-button
+# fallback. install.sh no longer runs this. The XP caption buttons come from
+# omarchy/xp/hyprbars/build (user-level, no AUR), and yay compiles the AUR
+# package against the same installed Hyprland headers, so it can only load
+# where that build already works. Run it yourself, as yourself (not with
+# sudo): yay builds as the user and asks for sudo only to install.
 #
 # Installs, and so writes as root:
-#   hyprland-plugin-hyprbars (AUR, pkgbase hyprland-plugins, builds hyprwm's
-#     official repo at a pinned commit) -> /usr/lib/libhyprbars.so + its LICENSE
-#   xscreensaver (extra) -> /usr/bin/xscreensaver*, /usr/lib/xscreensaver/
-#     (the hacks, incl. pipes), /usr/share/xscreensaver/, /etc/pam.d/xscreensaver,
-#     two /usr/share/applications entries. No autostart, no systemd unit.
+#   hyprland-plugin-hyprbars (AUR, pkgbase hyprland-plugins) -> /usr/lib/libhyprbars.so
 #
-# Undo: sudo pacman -Rns hyprland-plugin-hyprbars xscreensaver
+# Refuses when the AUR's version is not the running Hyprland's: the AUR moves
+# to the next Hyprland before Arch does (0.57.0-1.2 while Arch shipped
+# 0.56.2), and a hyprbars for another Hyprland is refused at load.
+#
+# Undo: sudo pacman -Rns hyprland-plugin-hyprbars
 set -euo pipefail
 
 (( EUID != 0 )) || { echo "run this as yourself, not root (yay refuses root)" >&2; exit 1; }
+command -v yay >/dev/null || { echo "yay not found" >&2; exit 1; }
 
-# hyprbars is ABI-locked to the running Hyprland; the AUR package pins <0.57.
 hv=$(hyprctl version -j | jq -r .tag)
-[[ $hv == v0.56.* ]] || { echo "Hyprland is $hv; this script expects 0.56.x (hyprbars ABI)" >&2; exit 1; }
+hv=${hv#v}
+aur=$(yay -Si --aur hyprland-plugin-hyprbars 2>/dev/null | sed -n 's/^Version *: *//p')
+# 0.56.2-3.1 -> 0.56.2
+if [[ ${aur%%-*} != "$hv" ]]; then
+  echo "refusing: the AUR hyprbars is ${aur:-unavailable}, the running Hyprland is $hv" >&2
+  exit 1
+fi
+if [[ $(pacman -Q hyprland-plugin-hyprbars 2>/dev/null | awk '{print $2}') == "$aur" ]]; then
+  echo "hyprland-plugin-hyprbars $aur already installed"
+  exit 0
+fi
 
-sudo pacman -S --needed xscreensaver
 yay -S --needed hyprland-plugin-hyprbars
 
 echo
-pacman -Q hyprland hyprland-plugin-hyprbars xscreensaver
-ls -l /usr/lib/libhyprbars.so /usr/lib/xscreensaver/pipes
+pacman -Q hyprland hyprland-plugin-hyprbars
+ls -l /usr/lib/libhyprbars.so

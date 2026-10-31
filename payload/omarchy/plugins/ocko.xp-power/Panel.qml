@@ -306,6 +306,39 @@ Panel {
   // Opened from the tray, XP showed the Power Meter page.
   property int xpTab: 1
 
+  // The notification-area battery as a batmeter.dll frame (assets
+  // graphics/batmeter/32/<n>.png), -1 without a battery. ocko.xp-taskbar
+  // reads it off the button's parent in preference to the glyph, because
+  // the glyph cannot tell "on AC, held at the charge threshold" (stock shows
+  // the on-battery glyphs then) or "charging at 90%+" (the full glyph) apart.
+  // On AC XP showed the plug, with the battery beside it while charging.
+  readonly property int xpBatteryFrame: {
+    var d = UPower.displayDevice
+    if (!d || !d.isPresent) return -1
+    var s = upowerStates()
+    if (!root.discharging)
+      return d.state === s.Charging && !Model.chargeThresholdActive(d, false, s) ? 8 : 6
+    var pct = root.batteryFraction * 100
+    return pct < 10 ? 5 : pct < 30 ? 2 : pct < 70 ? 1 : 0
+  }
+
+  // XP's battery tooltip.
+  function xpDuration(seconds) {
+    var m = Math.round(seconds / 60), h = Math.floor(m / 60)
+    m = m % 60
+    return (h > 0 ? h + " hr " : "") + m + " min"
+  }
+  readonly property string xpTooltip: {
+    var d = UPower.displayDevice
+    if (!d || !d.isPresent) return ""
+    var pct = Math.round(root.batteryFraction * 100)
+    if (root.discharging)
+      return (d.timeToEmpty > 0 ? xpDuration(d.timeToEmpty) + " (" + pct + "%)" : pct + "%") + " remaining"
+    if (xpBatteryFrame === 8) return pct + "% remaining (charging)"
+    return pct >= 99 ? "Fully charged (100%)" : pct + "% remaining (plugged in)"
+  }
+  Binding { target: button; property: "tooltipText"; value: root.xpTooltip }
+
   function xpBareCard(item) {
     var card = item && item.parent ? item.parent.parent : null
     if (card && "radius" in card) {

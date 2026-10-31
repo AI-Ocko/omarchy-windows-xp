@@ -1,6 +1,7 @@
-omarchy-windows-xp a67900698515 (2026-10-30)
+omarchy-windows-xp 1.1.0 (2026-10-30)
 
 Built against: Omarchy 4.0.6-1, Hyprland v0.56.2 (efb5099), quickshell 0.3.2.r7.g2b4501a-1
+Title bars: hyprbars from hyprwm/hyprland-plugins 7644cec + xp-captions.patch, built per user (no AUR)
 
 Stock Omarchy files each XP plugin copies, verified by sha256 (compat.json):
   ocko.xp-agents: 3 files, omarchy 4.0.6-1
@@ -8,6 +9,7 @@ Stock Omarchy files each XP plugin copies, verified by sha256 (compat.json):
   ocko.xp-bluetooth: 2 files, omarchy 4.0.6-1
   ocko.xp-clock: 3 files, omarchy 4.0.6-1
   ocko.xp-idle: 2 files, omarchy 4.0.6-1
+  ocko.xp-lock: 2 files, omarchy 4.0.6-1
   ocko.xp-menu: 2 files, omarchy 4.0.6-1
   ocko.xp-monitor: 2 files, omarchy 4.0.6-1
   ocko.xp-network: 2 files, omarchy 4.0.6-1
@@ -19,12 +21,13 @@ Stock Omarchy files each XP plugin copies, verified by sha256 (compat.json):
   ocko.xp-tray: 2 files, omarchy 4.0.6-1
   ocko.xp-weather: 3 files, omarchy 4.0.6-1
 
-xp-compat-test at export time:
+xp-compat-test at release:
   ocko.xp-agents         ok
   ocko.xp-audio          ok
   ocko.xp-bluetooth      ok
   ocko.xp-clock          ok
   ocko.xp-idle           ok
+  ocko.xp-lock           ok
   ocko.xp-menu           ok
   ocko.xp-monitor        ok
   ocko.xp-network        ok

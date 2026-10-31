@@ -48,6 +48,9 @@ cat >"$WORK/xptool.py" <<'PY'
    xptool.py bootpal <in.bmp> <out.bmp>          give an ntoskrnl boot bitmap its palette
    xptool.py xcursor <user32.dll> <outdir>       XP's standard cursors as an Xcursor theme
    xptool.py halfblock <in.ppm> <out.txt> color|mono  image as U+2580 terminal art
+   xptool.py strip <pe> <outdir> <id>:<w>:<rrggbb>  BITMAP <id>, a strip of <w>-px
+                                                 frames, as <outdir>/<h>/<n>.png with
+                                                 colour <rrggbb> transparent
 Parses bytes only; never loads or runs the PE."""
 import os, struct, sys
 
@@ -274,6 +277,81 @@ def halfblock(src, dst, mode):
         lines.pop()
     open(dst, "w", encoding="utf-8").write("\n".join(lines) + "\n")
 
+def dib_rows(dib):
+    """BITMAP resource DIB (BI_RGB 1/4/8/24/32 bpp, BI_RLE8, BI_RLE4) -> w, h, top-down rows of (r, g, b)."""
+    hsz, w, h, _pl, bpp, comp = struct.unpack_from("<IiiHHI", dib, 0)
+    ncol = (struct.unpack_from("<I", dib, 32)[0] if hsz >= 36 else 0) or (1 << bpp if bpp <= 8 else 0)
+    pal = [tuple(dib[hsz + 4 * i:hsz + 4 * i + 3][::-1]) for i in range(ncol)]
+    bits, topdown, h = hsz + 4 * ncol, h < 0, abs(h)
+    if comp in (1, 2):  # RLE8 / RLE4: (count, value) runs and escapes, bottom-up
+        idx, x, y, p = [[0] * w for _ in range(h)], 0, 0, bits
+        nib = lambda b, k: b if comp == 1 else (b >> 4 if k % 2 == 0 else b & 15)
+        def put(v):
+            if x < w and y < h:
+                idx[y][x] = v
+        while p + 1 < len(dib):
+            n, c = dib[p], dib[p + 1]
+            p += 2
+            if n:
+                for k in range(n):
+                    put(nib(c, k)); x += 1
+            elif c == 0:
+                x, y = 0, y + 1
+            elif c == 1:
+                break
+            elif c == 2:
+                x, y, p = x + dib[p], y + dib[p + 1], p + 2
+            else:
+                for k in range(c):
+                    put(dib[p + k] if comp == 1 else nib(dib[p + k // 2], k)); x += 1
+                nbytes = c if comp == 1 else (c + 1) // 2
+                p += nbytes + (nbytes & 1)
+        rows = [[pal[v] for v in r] for r in idx]
+    elif comp == 0:
+        stride, rows = ((w * bpp + 31) // 32) * 4, []
+        for y in range(h):
+            r, row = dib[bits + y * stride:bits + (y + 1) * stride], []
+            for x in range(w):
+                if bpp <= 8:
+                    b = x * bpp
+                    row.append(pal[(r[b // 8] >> (8 - bpp - b % 8)) & ((1 << bpp) - 1)])
+                else:
+                    o = x * bpp // 8
+                    row.append((r[o + 2], r[o + 1], r[o]))
+            rows.append(row)
+    else:
+        sys.exit("unsupported BMP compression %d" % comp)
+    if not topdown:
+        rows.reverse()
+    return w, h, rows
+
+def png(path, w, h, rows):
+    """RGBA rows -> PNG. Stored (uncompressed) deflate blocks, so the bytes
+    never depend on the zlib build and the output can be pinned by sha256."""
+    import zlib
+    raw = b"".join(b"\0" + bytes(c for px in row for c in px) for row in rows)
+    z = b"\x78\x01"
+    for i in range(0, len(raw), 65535):
+        blk = raw[i:i + 65535]
+        z += bytes([i + 65535 >= len(raw)]) + struct.pack("<HH", len(blk), len(blk) ^ 0xFFFF) + blk
+    z += struct.pack(">I", zlib.adler32(raw))
+    chunk = lambda t, d: struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d))
+    with open(path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+                + chunk(b"IDAT", z) + chunk(b"IEND", b""))
+
+def strip(path, out, spec):
+    """A BITMAP that is a horizontal strip of equal frames (batmeter.dll's
+    tray battery: 300 is 32 px x 10 plus a stray column) on a colour key."""
+    rid, fw, key = spec.split(":")
+    fw, key = int(fw), tuple(bytes.fromhex(key))
+    dib = next(blob for label, name, blob in resources(path, {"BITMAP"}) if str(name) == rid)
+    w, h, rows = dib_rows(dib)
+    os.makedirs(os.path.join(out, str(h)))
+    for n in range(w // fw):
+        frame = [[(*px, 255) if px != key else (0, 0, 0, 0) for px in row[n * fw:(n + 1) * fw]] for row in rows]
+        png(os.path.join(out, str(h), "%d.png" % n), fw, h, frame)
+
 if sys.argv[1] == "peres":
     peres(sys.argv[2], sys.argv[3], set(sys.argv[4].split(",")))
 elif sys.argv[1] == "icons":
@@ -282,6 +360,8 @@ elif sys.argv[1] == "bootpal":
     bootpal(sys.argv[2], sys.argv[3])
 elif sys.argv[1] == "xcursor":
     xcursor(sys.argv[2], sys.argv[3])
+elif sys.argv[1] == "strip":
+    strip(sys.argv[2], sys.argv[3], sys.argv[4])
 elif sys.argv[1] == "halfblock":
     halfblock(sys.argv[2], sys.argv[3], sys.argv[4])
 else:
@@ -377,6 +457,7 @@ MSGINA|d7616b234e7fe251bd604724ff048b378c598b1eb8126b35fe5acc74a7662aa2|$ISO/MSG
 SHELL32|ad0c40de296b3ed81e187f4e6df1f58c5c1ac28e2f444f219037ef81399f61a7|$ISO/SHELL32.DL_
 USER32|a9e1eec98d0bb4bc6d3787ed45a650d0c7bc6674941f551d9bbaa7f485ea040f|$ISO/USER32.DL_
 STOBJECT|fe673eb3774f257874a756e456dbf701c9c6afb880660cf198f9db76bdca5608|$ISO/STOBJECT.DL_
+BATMETER|24f1c53a0a2d40004a9ba6b1ceba675094faa129ec29e67e191c03e7fb89bc94|$ISO/BATMETER.DL_
 NETSHELL|18f546092e7ca6fb7b8b3d2ca429d80e2a49c6cb5bccabe19e6b5c6c918408cd|$ISO/NETSHELL.DL_
 WUAUCLT|e98fbeec7d173bc586618af0079036972eab61863fa1b3770d3a3a52d1b9e1b1|$ISO/WUAUCLT.EX_
 MMSYS|aef3f77813c149e3cef23b6b7d2f75803a01754056f93b04ed9fb9cdb5150286|$ISO/MMSYS.CP_
@@ -430,6 +511,8 @@ EOF
 #            <size>/<id>.ico; member = sizes. PNGs are derived by bin/xp-taskbar-art.
 #   bootpal  BITMAP <member> of @binaries/ntoskrnl.exe with the recovered boot palette
 #   xcursor  user32.dll's cursors as an Xcursor theme (xptool.py xcursor)
+#   strip    BITMAP <id> of a local file cut into <w>-px frames, colour key
+#            transparent, as PNGs <h>/<n>.png; member = <id>:<w>:<rrggbb>
 # A zip/7z member may be a directory (the GTK and icon themes): its tree hash
 # then covers symlink targets too, and links leaving the tree are refused.
 OUTPUTS=$(cat <<'EOF'
@@ -526,6 +609,7 @@ binaries/msgina.dll|651b16027b4f4b0ed2f827e32b7e66188cdb023db8c7b1a9a1a44063fb35
 binaries/shell32.dll|7c201e812138e2b9cbc2aa94e41d5573775d893b8104833a997acc79486d9a3a|cab|SHELL32|-
 binaries/user32.dll|acd0ae7b4d5f871e148276c6cc4ae3a216e33f67fc78d827c16986e1f945438c|cab|USER32|-
 binaries/stobject.dll|670006280ca98213c3a23b442615fd729c83953795619360f9d2988e56a602d7|cab|STOBJECT|-
+binaries/batmeter.dll|76f8ae2680438b279081edfc2728e3785736e82a5c6396aa705bffff5c361294|cab|BATMETER|-
 binaries/netshell.dll|3c0bfa381cbc2c55b58a8942a7148a6c27e244d26313efb4708dd5858c689e02|cab|NETSHELL|-
 binaries/wuauclt.exe|20524aa4a86a4de282d304cbfad66b9e70d3f3baae828208a28f86e6ac521bdb|cab|WUAUCLT|-
 binaries/mmsys.cpl|bb9b488afc5eb0a7137a03ab0757c48261581797b8ee6a9c889c01f13eb3dfaf|cab|MMSYS|-
@@ -547,6 +631,7 @@ graphics/zune|b0086fa438c6ca457ac26666d4ac4b6bc6547435539b61e5b4c36d6a0038d93e|p
 graphics/ntoskrnl|3e2b0fdd4da641e723c74a10acc8e2f6b62687437abd593bac2ada3dd19877a6|peres|@binaries/ntoskrnl.exe|BITMAP
 graphics/explorer|91b9af5a448b18941400481fe2f2a3f4ab3b5be8cd27e0a3efefc4970ba6f0f5|peres|@binaries/explorer.exe|BITMAP
 graphics/logonui|134b298c0d752a846ec07d51d431f37992e3b277b80467e9b97ba8dc46fd2de1|peres|@binaries/logonui.exe|BITMAP
+graphics/batmeter|b124e6c18e1eba1b7101678ba9fdaaff68641f965282ebde0a69480c450cfa90|strip|@binaries/batmeter.dll|300:32:ff00ff
 graphics/msgina|cc31359b2187507b01afa5405a1c67974962405596577018bddebebdb998b985|peres|@binaries/msgina.dll|BITMAP
 graphics/shell32-bmp|643f317d71a6a9ca8f55e28b1e153ac19cc3166bf8180cab609de0a7e234179e|peres|@binaries/shell32.dll|BITMAP
 graphics/timedate-bmp|96d3598bccbf3f66b42194a44120bbd1875eba55f6034d3666cbf9a67e24fb02|peres|@binaries/timedate.cpl|BITMAP
@@ -672,6 +757,7 @@ build() {  # method src member -> path of the produced file/dir (inside $WORK)
         peres) python3 -I "$WORK/xptool.py" peres "$in" "$x/out" "$member" || { err "peres failed: $src"; return 1; }; echo "$x/out" ;;
         icons) python3 -I "$WORK/xptool.py" icons "$in" "$x/out" "$member" || { err "icons failed: $src"; return 1; }; echo "$x/out" ;;
         xcursor) python3 -I "$WORK/xptool.py" xcursor "$in" "$x/out" || { err "xcursor failed: $src"; return 1; }; echo "$x/out" ;;
+        strip) python3 -I "$WORK/xptool.py" strip "$in" "$x/out" "$member" || { err "strip failed: $src"; return 1; }; echo "$x/out" ;;
         bootpal)
             python3 -I "$WORK/xptool.py" peres "$in" "$x/res" BITMAP || { err "peres failed: $src"; return 1; }
             python3 -I "$WORK/xptool.py" bootpal "$x/res/BITMAP/$member.bmp" "$x/out.bmp" || { err "bootpal failed"; return 1; }

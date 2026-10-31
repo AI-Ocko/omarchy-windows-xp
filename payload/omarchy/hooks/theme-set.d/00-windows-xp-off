@@ -1,0 +1,11 @@
+#!/bin/bash
+# Windows XP off for every non-XP theme (a fast no-op if XP was never on).
+# Named to run FIRST among the theme-set hooks (omarchy-hook runs them in name
+# order): XP puts back exactly what it saved, so it has to restore before the
+# new theme's own hooks apply their changes, or it would undo them (it did:
+# leaving XP for a theme with its own hook dropped that theme's bar, plugins,
+# cursor and fastfetch config). Entering XP is zz-windows-xp-on, which runs LAST.
+case $1 in
+  windows-xp | windows-xp-*) exit 0 ;;
+esac
+exec "$HOME/.config/omarchy/xp/bin/xp-mode" off

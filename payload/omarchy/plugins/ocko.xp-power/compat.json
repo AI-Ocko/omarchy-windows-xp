@@ -5,7 +5,7 @@
     "plugins/panels/power/Panel.qml": "8e7b6c32c2bda2069a03a04d4d71d6a82aa8aa435bfba0b81782a51d3195a848"
   },
   "shared": "1e73a03073c73d02a029ae323e4af4739975d96d259d586f8bba7525fb8cb1af",
-  "self": "53b2537ae4904ae1e51f1339829f8b7eab2ce991b4961effc5f6c3d78e505a5a",
+  "self": "89948204eb31df077c32590c4f659ac31d458f935b405f42016918d870c7f0dd",
   "external": [
     "Color",
     "ElideRight",
@@ -33,6 +33,7 @@
     "stop",
     "substring",
     "time",
+    "timeToEmpty",
     "timeToFull",
     "toLowerCase",
     "toUpperCase",

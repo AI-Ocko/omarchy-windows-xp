@@ -210,3 +210,38 @@ if [[ -f $mon && ! $OUT/desk-monitor.png -nt $mon ]]; then
   magick "$mon" -alpha set -fill none -opaque '#FF00FF' \
     -define png:exclude-chunks=date,time "PNG32:$OUT/desk-monitor.png"
 fi
+
+# XP Welcome screen for the lock (ocko.xp-lock), from logonui.exe's bitmaps,
+# as assets/graphics/logon/<id>.png. 100 (glow), 112 (user highlight), 123
+# (logo), 111/124/125/126 (dividers and band lines) are edged in or meant for
+# the field colour #5A7EDC and are used as they are. The rest carry keyed
+# corners: 102 (password field) #FF00FF; the buttons are pre-blended onto
+# their XP backdrop (103/104 go rgb(78,117,210), 105/106 help
+# rgb(89,124,219), 107/121 turn off rgb(62,52,171)), so their corners are
+# flood-filled from each corner, -fuzz 2%, rather than keyed globally (the
+# same blue appears inside the art). 113/119 (picture frame) already carry
+# alpha in the BMP; PNG keeps it where Qt's BMP reader would not.
+L=$G/logonui/BITMAP
+LO=$G/logon
+if [[ -d $L ]]; then
+  mkdir -p "$LO"
+  corners() { # <bmp> <out.png>: flood the four corners to transparent
+    local w h
+    read -r w h < <(magick identify -format '%w %h\n' "$1")
+    magick "$1" -alpha set -fuzz 2% -fill none \
+      -draw "color 0,0 floodfill" -draw "color $((w - 1)),0 floodfill" \
+      -draw "color 0,$((h - 1)) floodfill" -draw "color $((w - 1)),$((h - 1)) floodfill" \
+      -define png:exclude-chunks=date,time "PNG32:$2"
+  }
+  for id in 100 111 112 114 123 124 125 126 113 119; do
+    [[ -f $L/$id.bmp && ! $LO/$id.png -nt $L/$id.bmp ]] || continue
+    magick "$L/$id.bmp" -define png:exclude-chunks=date,time "PNG32:$LO/$id.png"
+  done
+  [[ -f $L/102.bmp && ! $LO/102.png -nt $L/102.bmp ]] &&
+    magick "$L/102.bmp" -alpha set -fill none -opaque '#FF00FF' -define png:exclude-chunks=date,time "PNG32:$LO/102.png"
+  for id in 103 104 105 106 107 121; do
+    [[ -f $L/$id.bmp && ! $LO/$id.png -nt $L/$id.bmp ]] || continue
+    corners "$L/$id.bmp" "$LO/$id.png"
+  done
+  echo "logon art: $(find "$LO" -name '*.png' | wc -l) files in $LO"
+fi

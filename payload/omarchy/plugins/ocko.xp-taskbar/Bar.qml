@@ -293,8 +293,24 @@ Item {
   }
   onXpLiveClonesChanged: Qt.callLater(applyBarConfig)
 
+  // A layout entry may name the user's own clone of a stock widget
+  // (you.power, cloned from omarchy.power): XP's clone replaces that
+  // too. xp-mode writes every installed plugin's omarchy.clonedFrom to
+  // clones.json, because the registry view a plugin bar gets does not show
+  // other manifests.
+  property var xpClonedFrom: ({})
+  FileView {
+    path: root.stateHome + "/omarchy/xp/clones.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: {
+      try { root.xpClonedFrom = JSON.parse(text()) || {} } catch (e) { root.xpClonedFrom = {} }
+    }
+  }
+
   function xpCloneId(id) {
-    var clone = xpWidgetClones[id]
+    var clone = xpWidgetClones[id] || xpWidgetClones[xpClonedFrom[id] || ""]
     return clone && barWidgetRegistry.widgets[clone] ? clone : id
   }
 
@@ -370,6 +386,31 @@ Item {
     "\ue318": "netshell/1111-cloud",    // rain
     "\ue31a": "netshell/1111-cloud",    // snow
     "\ue31d": "netshell/1111",          // thunderstorm: the cloud with its bolt
+    // Battery (stock power/Model.js batteryIcon): batmeter.dll BITMAP 300
+    // frames. On battery by charge, 0-9% 5 (empty), 10-29% 2 (low), 30-69% 1
+    // (medium), 70-100% 0 (high); charging 8 (plug + battery); fully charged
+    // 6 (plug). ocko.xp-power's xpBatteryFrame, when there, overrides these
+    // (charge threshold on AC, charging at 90%+).
+    "\u{F007A}": "batmeter/5",          //   0-9%
+    "\u{F007B}": "batmeter/2",          //  10-19%
+    "\u{F007C}": "batmeter/2",          //  20-29%
+    "\u{F007D}": "batmeter/1",          //  30-39%
+    "\u{F007E}": "batmeter/1",          //  40-49%
+    "\u{F007F}": "batmeter/1",          //  50-59%
+    "\u{F0080}": "batmeter/1",          //  60-69%
+    "\u{F0081}": "batmeter/0",          //  70-79%
+    "\u{F0082}": "batmeter/0",          //  80-89%
+    "\u{F0079}": "batmeter/0",          //  90-100%
+    "\u{F089C}": "batmeter/8",          // charging, by charge
+    "\u{F0086}": "batmeter/8",
+    "\u{F0087}": "batmeter/8",
+    "\u{F0088}": "batmeter/8",
+    "\u{F089D}": "batmeter/8",
+    "\u{F0089}": "batmeter/8",
+    "\u{F089E}": "batmeter/8",
+    "\u{F008A}": "batmeter/8",
+    "\u{F008B}": "batmeter/8",
+    "\u{F0085}": "batmeter/6",          // fully charged
     "\uf053": "chevron"                 // tray drawer
   })
   // Drawn at half opacity, as XP draws a disabled tray icon.
@@ -380,9 +421,22 @@ Item {
   // rather than the 16 px one scaled up (soft). "@16" marks the few icons XP
   // shipped at 16 px only; `size` 16 is also the fallback when a 32 px export
   // is missing.
-  function xpTrayArtUrl(glyph, hovered, muted, trayOpen, size) {
+  // The art key of a tray button's text: the token after its last space.
+  // The power widget shows "58% <glyph>" while the percentage is on.
+  function xpTrayKey(text) {
+    var t = String(text || "")
+    return t.slice(t.lastIndexOf(" ") + 1)
+  }
+  // The "58% " in front of the glyph, or "".
+  function xpTrayPrefix(text) {
+    var t = String(text || "")
+    return t.slice(0, t.lastIndexOf(" ") + 1).trim()
+  }
+
+  function xpTrayArtUrl(glyph, hovered, muted, trayOpen, size, battery) {
     var art = xpTrayArt[String(glyph || "")]
     if (!art) return ""
+    if (art.indexOf("batmeter/") === 0 && battery >= 0) art = "batmeter/" + battery
     // XP's chevron points the way it will move the hidden icons: "<" shows
     // them, ">" (the Open art) hides them again. Frame 1 is hot.
     if (art === "chevron") return xpArtDir + (trayOpen ? "/chevron-open-" : "/chevron-") + (hovered ? 1 : 0) + ".png"
@@ -399,7 +453,7 @@ Item {
   function xpSkinTray(item) {
     if (!item) return
     if ("iconComponent" in item && "opticalSize" in item) {
-      item.iconComponent = Qt.binding(function() { return root.xpTrayArt[item.text] ? xpTrayIcon : null })
+      item.iconComponent = Qt.binding(function() { return root.xpTrayArt[root.xpTrayKey(item.text)] ? xpTrayIcon : null })
       if (item.text === "\uf053") xpLatchChevron(item)
       return
     }
@@ -442,12 +496,19 @@ Item {
 
       // 32, then 16 when the 32 px export is missing, then the glyph below.
       property int artSize: 32
-      readonly property string glyph: button ? button.text : ""
+      readonly property string glyph: button ? root.xpTrayKey(button.text) : ""
+      readonly property string prefix: button ? root.xpTrayPrefix(button.text) : ""
+      // ocko.xp-power's battery state, -1 elsewhere.
+      readonly property int battery: button && button.parent && typeof button.parent.xpBatteryFrame === "number"
+        ? button.parent.xpBatteryFrame : -1
       onGlyphChanged: artSize = 32
 
       Image {
         id: xpTrayImage
         anchors.centerIn: parent
+        // With a "58%" label the button is two slots wide (stock doubles
+        // slotSize); the canvas stays centred, so the icon moves right.
+        anchors.horizontalCenterOffset: parent.prefix !== "" && parent.button ? parent.button.slotSize / 4 : 0
         width: Style.space(parent.chevron ? 19 : 16)
         height: Style.space(parent.chevron ? 20 : 16)
         // The chevron is cut at its drawn size; the icons are decoded at full
@@ -458,8 +519,21 @@ Item {
         opacity: root.xpTrayArtDim.indexOf(parent.glyph) !== -1 ? 0.5 : 1
         source: parent.button ? root.xpTrayArtUrl(parent.glyph, parent.button.tooltipHovered,
                                                   !!parent.button.parent && parent.button.parent.outputMuted === true,
-                                                  !!parent.tray && parent.tray.expanded === true, parent.artSize) : ""
+                                                  !!parent.tray && parent.tray.expanded === true, parent.artSize,
+                                                  parent.battery) : ""
         onStatusChanged: if (status === Image.Error && parent.artSize === 32) parent.artSize = 16
+      }
+
+      // "58%" left of the battery, in the clock's font and colour.
+      Text {
+        visible: parent.prefix !== "" && xpTrayImage.status !== Image.Error
+        anchors.right: xpTrayImage.left
+        anchors.rightMargin: Style.space(3)
+        anchors.verticalCenter: xpTrayImage.verticalCenter
+        text: parent.prefix
+        color: root.xpScheme.clock
+        font.family: "Tahoma"
+        font.pixelSize: Style.font.bodySmall
       }
 
       // Art missing on disk (assets are git-ignored): draw the stock glyph.
