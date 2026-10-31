@@ -876,6 +876,7 @@ rm -f "$DATA/icons/windows-xp-base/.icon-theme.cache"
 # devices and dialogs people actually see, inheriting the B00merang set for
 # everything else and Adwaita for what that lacks. shell32 ids were checked on
 # a contact sheet (ASSETS.md).
+# shellcheck disable=SC2054  # lib:id:name,name entries: the commas are data
 XP_ICONS=(shell32:4:folder,inode-directory shell32:5:folder-open shell32:235:user-home,folder-documents
     shell32:236:folder-pictures shell32:237:folder-music shell32:238:folder-videos shell32:35:user-desktop
     shell32:32:user-trash shell32:33:user-trash-full shell32:18:network-workgroup shell32:16:computer

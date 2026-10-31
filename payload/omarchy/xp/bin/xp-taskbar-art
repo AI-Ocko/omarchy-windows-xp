@@ -198,7 +198,7 @@ map=$G/timedate-bmp/BITMAP/50.bmp tzmap=$OUT/tzmap.png
 if [[ -f $map && ! $tzmap -nt $map ]]; then
   row() { magick "$map" -gravity "$1" -crop x1+0+0 +repage -unique-colors -depth 8 txt:- | grep -o '#[0-9A-F]\{6\}' | sort -u; }
   sea=() mark='#FF00FE'
-  for c in $(sort -u <(row north) <(row south)); do sea+=(-fill "$mark" -opaque "$c"); done
+  while read -r c; do sea+=(-fill "$mark" -opaque "$c"); done < <(sort -u <(row north) <(row south))
   magick "$map" -depth 8 "${sea[@]}" -fill '#3C8C2C' +opaque "$mark" -fill '#2050B0' -opaque "$mark" \
     -define png:exclude-chunks=date,time "PNG32:$tzmap"
 fi
