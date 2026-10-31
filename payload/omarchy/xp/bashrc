@@ -19,6 +19,10 @@ if [[ $_xp_theme == windows-xp || $_xp_theme == windows-xp-* ]]; then
       p=${p#/}
     fi
     export XP_PROMPT_PATH="C:\\${p//\//\\}"
+    # Re-asserted every prompt: ~/.bashrc lines after this hook (another
+    # rice's starship switcher, say) may export their own STARSHIP_CONFIG,
+    # and starship reads it per prompt, so the last export would win.
+    STARSHIP_CONFIG=$HOME/.config/omarchy/xp/starship.toml
   }
   # starship's bash init calls this before rendering each prompt.
   starship_precmd_user_func=_xp_prompt_path
