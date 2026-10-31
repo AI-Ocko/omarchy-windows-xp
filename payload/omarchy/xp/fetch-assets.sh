@@ -21,7 +21,9 @@ set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ASSETS=$HERE/assets
 FONTDIR=${XDG_DATA_HOME:-$HOME/.local/share}/fonts/xp
-UA='ocko-omarchy-xp-fetch/1.0 (personal use)'
+# Wikimedia's User-Agent policy requires a contact URL; generic agents get
+# HTTP 429 with Retry-After: 600.
+UA='omarchy-windows-xp-fetch/1.0 (+https://github.com/AI-Ocko/omarchy-windows-xp; personal use) curl'
 ISO='https://archive.org/download/en-windows-xp-professional-with-service-pack-3-x-86-1/en_windows_xp_professional_with_service_pack_3_x86%20%281%29.iso/I386'
 
 # ── Tools: never installed from here; listed for the root script instead ──────
