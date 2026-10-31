@@ -49,6 +49,24 @@ sudo commands left: turning the boot screen off and removing the packages.
   if it was missing and removed again when XP is turned off.
 - Text size is Omarchy's: XP pins no size of its own.
 
+## Battery
+
+Measured on a laptop with a quad-core Intel i5 and two batteries, on battery, idle desktop,
+the same brightness throughout: 30 s to settle, then 3 minutes per theme with
+`power_now` sampled every 5 s; CPU is the process's own time over those 3
+minutes, as % of one core (Omarchy 4.0.6, Hyprland 0.56.2, 2026-10-31).
+
+| theme | power, average (W) | min-max (W) | quickshell CPU | Hyprland CPU |
+|---|---|---|---|---|
+| tokyo-night (stock) | 9.77 | 9.16-11.59 | 0.1 % | 0.5 % |
+| windows-xp | 9.78 | 9.19-12.87 | 0.1 % | 0.7 % |
+| windows-vista (Aero) | 9.37 | 9.15-10.49 | 0.1 % | 0.5 % |
+| windows-vista-basic | 9.43 | 9.29-10.05 | 0.0 % | 0.5 % |
+
+The differences are within the noise of one 3-minute run per theme: neither
+theme costs measurable battery against stock Omarchy. The Windows Vista
+numbers are from the companion omarchy-windows-vista, measured in the same run.
+
 ## Microsoft's files are not in this repository
 
 `~/.config/omarchy/xp/fetch-assets.sh` (run by the installer) downloads them on
