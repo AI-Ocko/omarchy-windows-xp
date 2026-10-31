@@ -545,8 +545,17 @@ save_state() {
   jq -n '$ARGS.named' "${args[@]}" >"$SAVED.tmp" && mv "$SAVED.tmp" "$SAVED"
 }
 
+# Windows Vista (the omarchy-windows-vista package) may be installed too. Its
+# theme-set hooks already run its `off` before this `on` (00-windows-vista-off),
+# but a direct `xp-mode on` must not save Vista's state as "pre-XP".
+VISTA_MODE=$HOME/.config/omarchy/vista/bin/vista-mode
+
 cmd_on() {
   mkdir -p "$STATE_DIR" || return 1
+  if [[ -x $VISTA_MODE ]] && [[ $("$VISTA_MODE" status 2>/dev/null | head -n 1) == on ]]; then
+    log "Windows Vista is on: turning it off first"
+    "$VISTA_MODE" off || { log "vista-mode off failed; XP not applied"; return 1; }
+  fi
   if [[ ! -e $SAVED ]]; then
     save_state || { log "could not save pre-XP state; nothing applied"; return 1; }
   fi
