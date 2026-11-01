@@ -57,3 +57,10 @@ repository:
   GTK themes (GPL-3.0) and
   [WinXP-Icons](https://github.com/B00merang-Project/WinXP-Icons) (GPL-2.0),
   at pinned commits.
+
+## Browser dark mode palettes
+
+The colour values in `payload/omarchy/themes/*/zen-dark.css` and
+`chromium-dark.theme` were sampled (as hex values only) from screenshots of
+Microsoft's Royale Noir and Zune visual styles. No screenshot or other
+Microsoft file is included in this repository.

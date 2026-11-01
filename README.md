@@ -32,6 +32,25 @@ Switch schemes like any Omarchy theme: `windows-xp`, `windows-xp-olive`,
 everything it installed in your account. It prints, rather than runs, the two
 sudo commands left: turning the boot screen off and removing the packages.
 
+## Browser dark mode
+
+Under every XP scheme, Zen, Chromium and Google Chrome run dark: web pages get
+`prefers-color-scheme: dark`, and the browsers' own UI keeps the XP look in a
+dark palette (graphite faces from Microsoft's unreleased Royale Noir (its
+Start menu and task pane), each scheme's own caption gradient and highlight;
+Zune in its own black and orange). The rest of the desktop stays light.
+
+```
+~/.config/omarchy/xp/bin/xp-mode browser-dark off      # back to the light XP browsers
+~/.config/omarchy/xp/bin/xp-mode browser-dark on       # dark again (the default)
+~/.config/omarchy/xp/bin/xp-mode browser-dark status
+```
+
+The choice is kept in `~/.config/omarchy/xp/browser-dark` across theme
+switches and reboots. Browsers read it when they start: restart Zen, Chromium
+and Chrome to see a change (the command says which are running; it never
+closes them). Chromium's tab-strip colour follows at once.
+
 ## What it changes outside its own folders
 
 - `~/.config/foot/foot.ini`, `~/.bashrc`, `~/.config/tmux/tmux.conf`: one marked
@@ -48,6 +67,18 @@ sudo commands left: turning the boot screen off and removing the packages.
 - `~/.config/gtk-4.0/gtk.css` (a link, while XP is on); the folder is created
   if it was missing and removed again when XP is turned off.
 - Text size is Omarchy's: XP pins no size of its own.
+- Browser dark mode (while a XP theme is on and `browser-dark` is on; all
+  of it undone when you leave XP or turn it off): a marked
+  `--force-dark-mode` block at the end of `~/.config/chromium-flags.conf` and
+  `~/.config/chrome-flags.conf` (the untouched file waits in
+  `~/.local/state/omarchy/xp/browser-dark/` and is moved back byte for byte),
+  the scheme's dark tab-strip colour through Omarchy's own browser-policy
+  helper, and a marked block in your Zen profile's `user.js`
+  (`layout.css.prefers-color-scheme.content-override`). Zen keeps that pref
+  in `prefs.js` while it runs, so if Zen is open when dark mode ends, the
+  block turns into a reset and the clean-up finishes after Zen is closed (the
+  next `xp-mode` call or your next login); `uninstall.sh` asks you to close
+  Zen first in that case.
 
 ## Battery
 
