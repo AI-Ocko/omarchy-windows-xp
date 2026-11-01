@@ -1,8 +1,9 @@
 /* Windows XP for Zen: the shared half of userChrome.css.
  *
  * Active only while an XP theme is: xp-mode writes the scheme's zen.css (the
- * --xp-* colours, from omarchy/themes/<scheme>/zen.css) followed by this
- * file into ~/.local/state/omarchy/xp/zen-userChrome.css, and links the live
+ * --xp-* colours, from omarchy/themes/<scheme>/zen.css), with browser-dark
+ * on its zen-dark.css (the dark palette), then this file into
+ * ~/.local/state/omarchy/xp/zen-userChrome.css, and links the live
  * profile's chrome/userChrome.css to it. Revert removes the link. Zen reads
  * userChrome.css only at startup, so a running Zen changes on its next start.
  *
@@ -13,31 +14,53 @@
  * line), Tahoma, square corners, and the scheme's caption gradient across the
  * top of the sidebar. */
 
+/* Light defaults for the shared colours. :where() has zero specificity, so
+ * the scheme's zen.css and, with browser-dark on, its zen-dark.css (both
+ * plain :root) override any of them whatever the concatenation order. Every
+ * rule below takes its colours from variables only. */
+:where(:root) {
+  --xp-text: #000000;
+  --xp-window: #FFFFFF;
+  --xp-border: #ACA899;
+  --xp-rebar: var(--xp-face);
+  --xp-rebar-light: #FFFFFF;
+  --xp-hot: linear-gradient(to bottom, #FFFFFF, #ECEBE6 60%, #D6D0C5);
+  --xp-hot-edge: #CECEC3;
+  --xp-pressed: #E3E3DB;
+  --xp-pressed-edge: #9D9D92;
+  --xp-tab: linear-gradient(to bottom, #FFFFFF, #F3F3EF 50%, #ECEBE6 80%, #D6D3CE);
+  --xp-tab-edge: #919B9C;
+  --xp-tab-hot: #FFC73C;
+  --xp-tab-hot-edge: #E68B2C;
+  --xp-client-edge: #7F9DB9;
+  --xp-caption-edge: #000000;
+}
+
 :root {
   --zen-border-radius: 0px !important;
   --zen-main-browser-background: var(--xp-face) !important;
   --zen-main-browser-background-toolbar: var(--xp-face) !important;
   --zen-themed-toolbar-bg-transparent: var(--xp-face) !important;
-  --zen-colors-border: #ACA899 !important;
+  --zen-colors-border: var(--xp-border) !important;
   --zen-dialog-background: var(--xp-face) !important;
   --toolbar-bgcolor: var(--xp-face) !important;
-  --toolbar-color: #000000 !important;
-  --toolbar-field-background-color: #FFFFFF !important;
-  --toolbar-field-focus-background-color: #FFFFFF !important;
-  --toolbar-field-color: #000000 !important;
-  --toolbar-field-focus-color: #000000 !important;
+  --toolbar-color: var(--xp-text) !important;
+  --toolbar-field-background-color: var(--xp-window) !important;
+  --toolbar-field-focus-background-color: var(--xp-window) !important;
+  --toolbar-field-color: var(--xp-text) !important;
+  --toolbar-field-focus-color: var(--xp-text) !important;
   --toolbarbutton-border-radius: 0px !important;
   --tab-border-radius: 0px !important;
-  --panel-background: #FFFFFF !important;
-  --panel-color: #000000 !important;
-  --panel-border-color: #ACA899 !important;
+  --panel-background: var(--xp-window) !important;
+  --panel-color: var(--xp-text) !important;
+  --panel-border-color: var(--xp-border) !important;
   --panel-border-radius: 0px !important;
-  --arrowpanel-background: #FFFFFF !important;
-  --arrowpanel-color: #000000 !important;
-  --arrowpanel-border-color: #ACA899 !important;
+  --arrowpanel-background: var(--xp-window) !important;
+  --arrowpanel-color: var(--xp-text) !important;
+  --arrowpanel-border-color: var(--xp-border) !important;
   --arrowpanel-border-radius: 0px !important;
   font-family: Tahoma, sans-serif !important;
-  color: #000000 !important;
+  color: var(--xp-text) !important;
 }
 
 /* Zen sets its workspace gradient inline on these two; !important wins. */
@@ -60,7 +83,7 @@
 #zen-sidebar-top-buttons {
   background: var(--xp-caption) !important;
   color: var(--xp-caption-text) !important;
-  border-bottom: 1px solid #000000;
+  border-bottom: 1px solid var(--xp-caption-edge);
 }
 #zen-sidebar-top-buttons toolbarbutton {
   color: var(--xp-caption-text) !important;
@@ -69,9 +92,9 @@
 
 /* Toolbar: an XP rebar band (white highlight above, shadow below). */
 #nav-bar {
-  background: var(--xp-face) !important;
-  border-top: 1px solid #FFFFFF !important;
-  border-bottom: 1px solid #ACA899 !important;
+  background: var(--xp-rebar) !important;
+  border-top: 1px solid var(--xp-rebar-light) !important;
+  border-bottom: 1px solid var(--xp-border) !important;
   box-shadow: none !important;
 }
 toolbarbutton .toolbarbutton-icon,
@@ -80,19 +103,19 @@ toolbarbutton .toolbarbutton-text {
   border-radius: 0 !important;
 }
 toolbarbutton:not([disabled]):hover > :is(.toolbarbutton-icon, .toolbarbutton-badge-stack) {
-  background: linear-gradient(to bottom, #FFFFFF, #ECEBE6 60%, #D6D0C5) !important;
-  outline: 1px solid #CECEC3 !important;
+  background: var(--xp-hot) !important;
+  outline: 1px solid var(--xp-hot-edge) !important;
 }
 toolbarbutton:not([disabled]):is([open], [checked], :hover:active) > :is(.toolbarbutton-icon, .toolbarbutton-badge-stack) {
-  background: #E3E3DB !important;
-  outline: 1px solid #9D9D92 !important;
+  background: var(--xp-pressed) !important;
+  outline: 1px solid var(--xp-pressed-edge) !important;
 }
 
 /* Address bar: a Luna edit box. */
 #urlbar .urlbar-background {
-  --zen-urlbar-background-base: #FFFFFF !important;
-  --zen-urlbar-background-transparent: #FFFFFF !important;
-  background: #FFFFFF !important;
+  --zen-urlbar-background-base: var(--xp-window) !important;
+  --zen-urlbar-background-transparent: var(--xp-window) !important;
+  background: var(--xp-window) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   outline: 1px solid var(--xp-edit-border) !important;
@@ -100,27 +123,27 @@ toolbarbutton:not([disabled]):is([open], [checked], :hover:active) > :is(.toolba
 }
 #urlbar,
 #urlbar-input {
-  color: #000000 !important;
+  color: var(--xp-text) !important;
   font-family: Tahoma, sans-serif !important;
 }
 
 /* Tabs: XP tab-control items, stacked down the sidebar. */
 .tabbrowser-tab .tab-background {
   border-radius: 0 !important;
-  border: 1px solid #919B9C !important;
-  background: linear-gradient(to bottom, #FFFFFF, #F3F3EF 50%, #ECEBE6 80%, #D6D3CE) !important;
+  border: 1px solid var(--xp-tab-edge) !important;
+  background: var(--xp-tab) !important;
   box-shadow: none !important;
   outline: none !important;
 }
 .tabbrowser-tab:hover .tab-background {
-  box-shadow: inset 0 2px #FFC73C, inset 0 3px #E68B2C !important;
+  box-shadow: inset 0 2px var(--xp-tab-hot), inset 0 3px var(--xp-tab-hot-edge) !important;
 }
 .tabbrowser-tab:is([selected], [visuallyselected], [multiselected]) .tab-background {
-  background: #FFFFFF !important;
-  box-shadow: inset 0 2px #FFC73C, inset 0 3px #E68B2C !important;
+  background: var(--xp-window) !important;
+  box-shadow: inset 0 2px var(--xp-tab-hot), inset 0 3px var(--xp-tab-hot-edge) !important;
 }
 .tabbrowser-tab .tab-label {
-  color: #000000 !important;
+  color: var(--xp-text) !important;
   font-family: Tahoma, sans-serif !important;
 }
 
@@ -133,14 +156,14 @@ browser[type="content"] {
   box-shadow: none !important;
 }
 #tabbrowser-tabpanels .browserSidebarContainer {
-  outline: 1px solid #7F9DB9 !important;
+  outline: 1px solid var(--xp-client-edge) !important;
 }
 
 /* Menus: white, scheme highlight on the hot item. */
 menupopup,
 panel {
-  --panel-background: #FFFFFF !important;
-  --panel-border-color: #ACA899 !important;
+  --panel-background: var(--xp-window) !important;
+  --panel-border-color: var(--xp-border) !important;
   --panel-border-radius: 0px !important;
 }
 menupopup menuitem,
