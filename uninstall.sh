@@ -51,6 +51,23 @@ else
   echo "current theme is ${cur:-unknown}, not XP: nothing to switch"
 fi
 
+# Browser dark mode: `xp-mode off` above took out the Chromium/Chrome flag
+# blocks and Zen's user.js block, unless Zen was running; then a reset block
+# waits for Zen to close. Finish it now, or stop before removing what would.
+pending=$HOME/.local/state/omarchy/xp/zen-pending
+if [[ -e $pending ]]; then
+  run "$XP/bin/xp-mode" cleanup
+  if ((!DRY)) && [[ -e $pending ]]; then
+    warn "Zen is running and still holds the Windows XP dark-mode setting: close Zen, then run ./uninstall.sh again (it carries on from here)"
+    exit 1
+  fi
+fi
+for f in "${XDG_CONFIG_HOME:-$HOME/.config}"/chromium-flags.conf "${XDG_CONFIG_HOME:-$HOME/.config}"/chrome-flags.conf; do
+  if [[ -f $f ]] && grep -qxF '# >>> omarchy-windows-xp browser-dark' "$f"; then
+    warn "$f still has the XP browser-dark block (xp-mode off failed?): see $HOME/.local/state/omarchy/xp/xp-mode.log"
+  fi
+done
+
 say "Systemd user units"
 run systemctl --user disable --now xp-sizes.path
 remove "$CFG/systemd/user/xp-sizes.path" "$CFG/systemd/user/xp-sizes.service"
