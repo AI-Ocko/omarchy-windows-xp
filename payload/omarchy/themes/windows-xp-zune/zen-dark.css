@@ -1,0 +1,41 @@
+/* Windows XP (Zune), browser-dark: the dark half of the scheme's Zen colours.
+ * xp-mode concatenates zen.css, this file, then omarchy/xp/zen/userChrome.css
+ * while browser-dark is on (xp-mode browser-dark on|off). Zune's own black
+ * (its active caption #242624 -> #484A48, Start menu #2F2F2F) with its orange
+ * (#FE6622) on the hot edges; caption and selection stay the scheme's. */
+:root {
+  color-scheme: dark;
+  --xp-face: #1C1C1C;
+  --xp-rebar: linear-gradient(to bottom, #484A48, #3B3D3A 40%, #242624);
+  --xp-rebar-light: #5A5C5A;
+  --xp-window: #0E0E0E;
+  --xp-text: #EDEDED;
+  --xp-border: #3C3C3C;
+  --xp-gray-text: #8C8C8C;
+  --xp-hot: linear-gradient(to bottom, #575757, #3C3C3C 60%, #2F2F2F);
+  --xp-hot-edge: #FE6622;
+  --xp-pressed: #141414;
+  --xp-pressed-edge: #B74A07;
+  --xp-tab: linear-gradient(to bottom, #3C3C3C, #2F2F2F 50%, #262626 80%, #222222);
+  --xp-tab-edge: #000000;
+  --xp-tab-hot: #FF853C;
+  --xp-tab-hot-edge: #FE6622;
+  --xp-client-edge: #000000;
+  --xp-caption-edge: #000000;
+}
+/* Rules for what Zen and Firefox colour on the element itself, out of
+ * reach of the :root variables: the sidebar's own text (space name, New
+ * Tab) and menu text (--panel-text-color and the popup's own color-scheme). */
+#navigator-toolbox,
+#navigator-toolbox :is(#zen-current-workspace-indicator, #tabs-newtab-button, .zen-current-workspace-indicator-name),
+#navigator-toolbox #tabs-newtab-button :is(.toolbarbutton-text, .toolbarbutton-icon) {
+  --toolbox-textcolor: #EDEDED !important;
+  color: #EDEDED !important;
+  fill: #EDEDED !important;
+}
+menupopup,
+panel {
+  color-scheme: dark !important;
+  --panel-text-color: #EDEDED !important;
+  --text-color-disabled: #8C8C8C !important;
+}
