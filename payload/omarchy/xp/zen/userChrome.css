@@ -1,7 +1,7 @@
 /* Windows XP for Zen: the shared half of userChrome.css.
  *
  * Active only while an XP theme is: xp-mode writes the scheme's zen.css (the
- * --xp-* colours, from omarchy/themes/windows-xp*/zen.css) followed by this
+ * --xp-* colours, from omarchy/themes/<scheme>/zen.css) followed by this
  * file into ~/.local/state/omarchy/xp/zen-userChrome.css, and links the live
  * profile's chrome/userChrome.css to it. Revert removes the link. Zen reads
  * userChrome.css only at startup, so a running Zen changes on its next start.
