@@ -12,7 +12,7 @@
   --xp-text: #E6E9ED;
   --xp-border: #5C6778;
   --xp-gray-text: #8D96A3;
-  --xp-hot: linear-gradient(to bottom, #6B747D, #4B5667 60%, #353F4D);
+  --xp-hot: linear-gradient(to bottom, #5C6778, #4B5667 60%, #353F4D);
   --xp-hot-edge: #7C8993;
   --xp-pressed: #1D2533;
   --xp-pressed-edge: #070D17;
@@ -20,6 +20,8 @@
   --xp-tab-edge: #070D17;
   --xp-client-edge: #070D17;
   --xp-caption-edge: #070D17;
+  /* Olive's own selection colour, with black text: white on #93A070 is 2.8:1. */
+  --xp-select-text: #000000;
 }
 /* Rules for what Zen and Firefox colour on the element itself, out of
  * reach of the :root variables: the sidebar's own text (space name, New
