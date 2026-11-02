@@ -2,6 +2,10 @@
 #
 # The ANSI slots are the legacy cmd.exe console palette, identical in all
 # five XP schemes, so terminals, nvim, btop and CLI output look like cmd.exe.
+# Six that are too dark on black (below 4.5:1) are raised to 5:1, same hue;
+# the same values as foot.ini and neovim.lua. Originals, to undo:
+# red #800000, green #008000, blue #000080, magenta #800080, cyan #008080,
+# bright_blue #0000FF.
 # Selection is inverted (grey block, black text), the way cmd.exe "Mark" works.
 # Only `accent` changes per scheme: the active title-bar colour
 # (caption bitmap body; ini ActiveCaption #C0C0C0 would equal the foreground; see omarchy/xp/palette.md).
@@ -24,12 +28,12 @@ dark_foreground   = "#808080"
 light_foreground  = "#C0C0C0"
 bright_foreground = "#FFFFFF"
 
-red     = "#800000"
-green   = "#008000"
+red     = "#F90000"
+green   = "#009100"
 yellow  = "#808000"
-blue    = "#000080"
-magenta = "#800080"
-cyan    = "#008080"
+blue    = "#6868FF"
+magenta = "#DB00DB"
+cyan    = "#008A8A"
 # The console has no orange or brown; both use its dark yellow.
 orange  = "#808000"
 brown   = "#808000"
@@ -37,6 +41,6 @@ brown   = "#808000"
 bright_red     = "#FF0000"
 bright_green   = "#00FF00"
 bright_yellow  = "#FFFF00"
-bright_blue    = "#0000FF"
+bright_blue    = "#8080FF"
 bright_magenta = "#FF00FF"
 bright_cyan    = "#00FFFF"

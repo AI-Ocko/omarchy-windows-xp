@@ -8,6 +8,10 @@ screen, cursors, fonts, GTK theme, a cmd.exe terminal, sounds, the 3D Pipes
 screensaver and an optional XP boot screen. It changes nothing else about your
 desktop, and any non-XP theme puts the stock Omarchy look back.
 
+The cmd.exe palette, in foot, neovim and colors.toml, has its six too-dark colours
+raised to 5:1 on black. `xp-nvim-check` fails if any of them, or any nvim highlight
+group, drops below the bar again.
+
 ## Install
 
 From a terminal in your Omarchy session, as yourself (not root):

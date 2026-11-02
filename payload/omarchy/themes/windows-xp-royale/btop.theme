@@ -22,6 +22,9 @@ theme[selected_fg]="#FFFFFF"
 # Color of inactive/disabled text
 theme[inactive_fg]="#808080"
 
+# Text drawn on the graphs: console dark grey (btop's default #606060 is 3.3:1 on black)
+theme[graph_text]="#808080"
+
 # Misc colors for processes box including mini cpu graphs, details memory graph and details status text
 theme[proc_misc]="#00FF00"
 
