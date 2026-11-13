@@ -226,6 +226,7 @@ say "Switch to Windows XP"
 cur=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
 scheme=windows-xp
 [[ $cur == windows-xp-* ]] && scheme=$cur
+switched=$(date '+%Y-%m-%d %H:%M:%S')
 run omarchy theme set "$scheme"
 
 # ---------------------------------------------------------------- boot splash
@@ -251,7 +252,7 @@ fi
 # ---------------------------------------------------------------- post-check
 say "Check"
 if ((DRY)); then
-  echo "(dry run) would print: xp-mode status, hyprctl configerrors, the compatibility table, Tahoma in fc-list, the live XP terminal font line"
+  echo "(dry run) would print: xp-mode status, hyprctl configerrors, the compatibility table, the shell's XP warnings, Tahoma in fc-list, the live XP terminal font line"
   exit 0
 fi
 "$XP/bin/xp-mode" status
@@ -268,6 +269,15 @@ case $bars in
   *) warn "title bars: Hyprland has $bars, not the XP build: no XP title bars (see $HOME/.local/state/omarchy/xp/hyprbars-build.log)" ;;
 esac
 python3 "$XP/bin/xp-compat-test" | sed 's/^/  /'
+# What the shell logged about XP since the switch, once the plugins it
+# reloads have had a moment to load. A warning only: never fails the install.
+sleep 3
+runtime=$(python3 "$XP/bin/xp-compat-test" --runtime --since "$switched" 2>&1)
+case $? in
+  0) echo "shell log: no XP warnings" ;;
+  1) warn "the shell logged XP warnings since the switch:"; sed 's/^/  /' <<<"$runtime" >&2 ;;
+  *) warn "could not read the shell log: $runtime" ;;
+esac
 fc-list : family | grep -i -m1 tahoma || warn "Tahoma is not installed (fetch-assets.sh)"
 grep -m1 '^font=' "$HOME/.local/state/omarchy/current/theme/foot.ini"
 cat <<'EOF'
