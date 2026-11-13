@@ -35,5 +35,13 @@
     "toLowerCase",
     "toUpperCase",
     "trim"
-  ]
+  ],
+  "stockMembers": {
+    "glyphPaintedWidth": [
+      "Ui/BarIconButton.qml"
+    ],
+    "loadedContent": [
+      "Ui/KeyboardPanel.qml"
+    ]
+  }
 }

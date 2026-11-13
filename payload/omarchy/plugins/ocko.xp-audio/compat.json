@@ -47,5 +47,18 @@
     "trim",
     "unshift",
     "warn"
-  ]
+  ],
+  "stockMembers": {
+    "cardOrigin": [
+      "Ui/KeyboardPanel.qml"
+    ],
+    "fittedContentWidth": [
+      "Ui/KeyboardPanel.qml",
+      "Ui/PopupCard.qml"
+    ],
+    "screenW": [
+      "Ui/KeyboardPanel.qml",
+      "Ui/PopupCard.qml"
+    ]
+  }
 }

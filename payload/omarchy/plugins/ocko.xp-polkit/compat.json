@@ -33,5 +33,6 @@
     "toLowerCase",
     "trim",
     "warn"
-  ]
+  ],
+  "stockMembers": {}
 }
