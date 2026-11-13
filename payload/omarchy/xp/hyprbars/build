@@ -8,8 +8,8 @@
 #
 # RERUN THIS AFTER EVERY HYPRLAND UPDATE. The plugin is ABI-locked to the
 # Hyprland it was built against. omarchy/xp/hypr/late.lua loads it only while
-# the version stamp beside it matches the running Hyprland, and otherwise
-# falls back to the packaged /usr/lib/libhyprbars.so with plain buttons.
+# the version stamp beside it matches the running Hyprland; otherwise windows
+# have no title bar until it is rebuilt (xp-hyprbars-heal).
 #
 # Source: hyprwm/hyprland-plugins at the commit the AUR package
 # hyprland-plugin-hyprbars 0.56.2-3.1 pins, cloned to a temp dir from yay's

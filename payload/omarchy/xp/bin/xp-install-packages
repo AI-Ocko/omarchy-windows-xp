@@ -1,6 +1,9 @@
 #!/bin/bash
-# Optional, by hand only: the AUR hyprland-plugin-hyprbars as a plain-button
-# fallback. install.sh no longer runs this. The XP caption buttons come from
+# Obsolete since Omarchy 4.5: late.lua no longer loads the AUR plugin (it is
+# named hyprbars, which pulls Omarchy's own titlebars plugin in), so this
+# installs nothing XP uses. Kept for reference.
+# Was: optional, by hand only: the AUR hyprland-plugin-hyprbars as a
+# plain-button fallback. install.sh no longer runs this. The XP caption buttons come from
 # omarchy/xp/hyprbars/build (user-level, no AUR), and yay compiles the AUR
 # package against the same installed Hyprland headers, so it can only load
 # where that build already works. Run it yourself, as yourself (not with
