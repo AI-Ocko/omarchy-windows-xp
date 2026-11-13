@@ -28,11 +28,11 @@ Scope {
   // system.*); Switch User locks, as the spec decided.
   readonly property var buttons: mode === "turnoff" ? [
     { label: "<u>S</u>tand By", key: Qt.Key_S, frames: [3, 5, 4], what: "suspend", cmd: "systemctl suspend" },
-    { label: "T<u>u</u>rn Off", key: Qt.Key_U, frames: [0, 2, 1], what: "shutdown", cmd: "omarchy-system-shutdown" },
-    { label: "<u>R</u>estart", key: Qt.Key_R, frames: [6, 8, 7], what: "reboot", cmd: "omarchy-system-reboot" }
+    { label: "T<u>u</u>rn Off", key: Qt.Key_U, frames: [0, 2, 1], what: "shutdown", cmd: menu.powerCmd("shutdown") },
+    { label: "<u>R</u>estart", key: Qt.Key_R, frames: [6, 8, 7], what: "reboot", cmd: menu.powerCmd("reboot") }
   ] : [
     { label: "<u>S</u>witch User", key: Qt.Key_S, icon: "switch", what: "lock", cmd: "omarchy-system-lock" },
-    { label: "<u>L</u>og Off", key: Qt.Key_L, icon: "key", what: "logout", cmd: "omarchy-system-logout" }
+    { label: "<u>L</u>og Off", key: Qt.Key_L, icon: "key", what: "logout", cmd: menu.powerCmd("logout") }
   ]
 
   function show(m, screen) {

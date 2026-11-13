@@ -50,7 +50,10 @@ hl.config({
 -- Omarchy's default/hypr/windows.lua gives every `default-opacity`-tagged
 -- window "0.985 0.96". This rule loads after it, so it wins for XP; opt-outs
 -- that drop the tag are untouched. Check: hyprctl getprop address:<a> opacity
+-- Opaque windows: Omarchy 4.0 tags its translucent windows default-opacity,
+-- 4.5 transparent-window.
 o.window({ tag = "default-opacity" }, { opacity = "1 1" })
+o.window({ tag = "transparent-window" }, { opacity = "1 1" })
 
 -- XP screensaver: xscreensaver's `pipes`, started once per monitor by
 -- omarchy/xp/bin/xp-screensaver. An XWayland client: its WM_CLASS is
