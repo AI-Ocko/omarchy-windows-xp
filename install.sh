@@ -256,11 +256,16 @@ if ((DRY)); then
 fi
 "$XP/bin/xp-mode" status
 echo "hyprctl configerrors: $(hyprctl configerrors | tr -s '\n' ' ')"
-bars=$(grep -o '[^ ]*hyprbars[^ ]*\.so' "/proc/$(pidof Hyprland)/maps" 2>/dev/null | sort -u | tr '\n' ' ')
+# The theme switch reloads Hyprland asynchronously: give the plugin a moment.
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  bars=$(grep -o '[^ ]*\(hyprbars\|xpbars\|titlebars\)[^ ]*\.so' "/proc/$(pidof Hyprland)/maps" 2>/dev/null | sort -u | tr '\n' ' ')
+  [[ $bars == *"$HOME/.local/lib/hyprbars-xp/"* ]] && break
+  sleep 0.5
+done
 case $bars in
   *"$HOME/.local/lib/hyprbars-xp/"*) echo "title bars: XP caption buttons ($bars)" ;;
   "") warn "title bars: no hyprbars loaded in Hyprland" ;;
-  *) warn "title bars: Hyprland has $bars, not the XP build: plain buttons (see $HOME/.local/state/omarchy/xp/hyprbars-build.log)" ;;
+  *) warn "title bars: Hyprland has $bars, not the XP build: no XP title bars (see $HOME/.local/state/omarchy/xp/hyprbars-build.log)" ;;
 esac
 python3 "$XP/bin/xp-compat-test" | sed 's/^/  /'
 fc-list : family | grep -i -m1 tahoma || warn "Tahoma is not installed (fetch-assets.sh)"
