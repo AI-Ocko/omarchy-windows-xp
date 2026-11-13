@@ -4,8 +4,9 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import "IdleModel.js" as IdleModel
+import qs.Commons
 
-// ocko.xp-idle: omarchy.idle 4.0.6 with the Windows XP screensaver. Enabled
+// ocko.xp-idle: omarchy.idle 4.5.0 with the Windows XP screensaver. Enabled
 // only while an XP theme is active (omarchy/xp/bin/xp-mode swaps it for the
 // stock plugin). Everything is the stock service except, marked "XP:":
 //   - launchScreensaver() runs omarchy/xp/bin/xp-screensaver (xscreensaver's
@@ -404,7 +405,7 @@ Item {
     refreshStayAwakeState()
   }
 
-  IpcHandler {
+  ShellIpc {
     target: "idle"
 
     function status(): string {
