@@ -1,20 +1,19 @@
 {
-  "verified": "omarchy 4.0.6-1",
+  "verified": "omarchy 4.5.0-3",
   "stock": {
     "plugins/panels/bluetooth/Model.js": "b34f3259c6553f20ce37619d2f390cd3293303266f89f2a6df0b6810da384417",
-    "plugins/panels/bluetooth/Panel.qml": "018af5e96d27fe1f09dca2b2f24904c06290e31d21d00974387e0d51de8ae4b2"
+    "plugins/panels/bluetooth/Panel.qml": "1e03d3ae942f4fe095a57252d1f8253a4de269428bc5444b75ac30da84e1b269"
   },
-  "shared": "1e73a03073c73d02a029ae323e4af4739975d96d259d586f8bba7525fb8cb1af",
-  "self": "6014ffc7f1ff3745da8a3a2ce203ebe219640116dcb70885e38419dcb287f09b",
+  "shared": "a89a85796e5321e02fff44aa5f19687a0d862af09479626f3ef92352c4788823",
+  "self": "b730a5d4358b41a67e02ef8ed6dd5a88d0edbde77ec90c70a91bb5fb0180443a",
   "external": [
     "AlignHCenter",
     "Color",
     "Contain",
-    "ElideRight",
     "Horizontal",
-    "InQuad",
+    "I18n",
     "LeftButton",
-    "OutQuad",
+    "OutCubic",
     "PlainText",
     "RightButton",
     "StopAtBounds",
@@ -35,11 +34,9 @@
     "positionViewAtIndex",
     "push",
     "replace",
-    "restart",
     "round",
     "slice",
     "sort",
-    "stop",
     "test",
     "toLowerCase",
     "trim",
