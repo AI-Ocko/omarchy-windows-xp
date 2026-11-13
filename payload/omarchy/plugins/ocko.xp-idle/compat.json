@@ -1,11 +1,11 @@
 {
-  "verified": "omarchy 4.0.6-1",
+  "verified": "omarchy 4.5.0-3",
   "stock": {
     "plugins/services/idle/IdleModel.js": "4684ae9b2ffa79490cfbeda54d50d9d072a56fcb5ad765303ebfa1beceea7c71",
-    "plugins/services/idle/Service.qml": "f9ec3c2645e28ec83e8c19641a4762e50ec891ecfa90094b15048de20d6bffaa"
+    "plugins/services/idle/Service.qml": "37bc82e65a772744d1e80538d2b15d945d259f53293dabc2a38a633dd4590d85"
   },
-  "shared": "1e73a03073c73d02a029ae323e4af4739975d96d259d586f8bba7525fb8cb1af",
-  "self": "01bc53a655941253dad174f5180a6abebcd4bf2cd59748b43af8bdcfd9db20b1",
+  "shared": "a89a85796e5321e02fff44aa5f19687a0d862af09479626f3ef92352c4788823",
+  "self": "8b562173ef63833168b1ab80a8e58d09a0c1f68aaf67ea1f962bbbd5a633e379",
   "external": [
     "callLater",
     "env",
@@ -13,10 +13,6 @@
     "isIdle",
     "log",
     "push",
-    "reload",
-    "restart",
-    "split",
-    "stop",
     "stringify",
     "toISOString",
     "trim"
