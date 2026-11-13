@@ -62,8 +62,23 @@ closes them). Chromium's tab-strip colour follows at once.
   and the XP versions of the menu, notifications, OSD, idle, polkit and lock
   plugins, and disables the ones they replace, including your own clones of
   them (e.g. a `you.lock` cloned from `omarchy.lock`), so there is only ever
-  one lock screen and one polkit agent. Leaving XP puts both lists back
-  exactly. The lock is swapped only while unlocked.
+  one lock screen and one polkit agent. The bar layout's widget entries name
+  the XP clones meanwhile (each keeps the id it replaced in `xpFrom`), and
+  Omarchy's dock is off. Leaving XP puts all of it back exactly. The lock is
+  swapped only while unlocked.
+- While an XP theme is on, a Hyprland toggle file also binds Super+Alt+Space
+  to the Start menu (in place of the dock's app grid), and Omarchy's
+  video-background daemon (OWE) is paused, unless you had paused it yourself,
+  then resumed when you leave (XP's wallpapers are stills; nothing is written
+  to disk).
+- When you leave XP for a theme that uses Omarchy's own bar, the bar layout is
+  converted to the Omarchy 4.5 format by Omarchy's own two layout migrations,
+  which 4.5's update could not apply while the XP taskbar was selected. A
+  theme with its own replacement bar keeps the layout as it is.
+- Once, on the first switch to XP after updating to this release on Omarchy
+  4.5: the notification files the previous XP release (4.0-era) had left in
+  `~/.local/state/omarchy/notifications` are removed, by running Omarchy's own
+  clean-up migration again.
 - `~/.config/gtk-4.0/gtk.css` (a link, while XP is on); the folder is created
   if it was missing and removed again when XP is turned off.
 - Text size is Omarchy's: XP pins no size of its own.
@@ -90,7 +105,8 @@ closes them). Chromium's tab-strip colour follows at once.
 Measured on a laptop with a quad-core Intel i5 and two batteries, on battery, idle desktop,
 the same brightness throughout: 30 s to settle, then 3 minutes per theme with
 `power_now` sampled every 5 s; CPU is the process's own time over those 3
-minutes, as % of one core (Omarchy 4.0.6, Hyprland 0.56.2, 2026-10-31).
+minutes, as % of one core (Omarchy 4.0.6, Hyprland 0.56.2, 2026-10-31; not
+re-measured for Omarchy 4.5).
 
 | theme | power, average (W) | min-max (W) | quickshell CPU | Hyprland CPU |
 |---|---|---|---|---|
@@ -121,20 +137,29 @@ None of it is ever committed here.
 
 ## Omarchy versions
 
-- **Supported:** Omarchy 4.0.x (Quattro). `VERSION` names the release each XP
-  part was last verified against.
+- **Supported:** Omarchy 4.5 (Quattro); built against 4.5.0. `VERSION` names
+  the release each XP part was last verified against. For Omarchy 4.0.x, use
+  the previous release (1.1.0).
 - **Always safe:** the XP parts copy Omarchy code, so an update can break one.
   Before enabling them, and after every `omarchy update`, `xp-compat-test`
   checks each against the installed Omarchy; one that no longer fits stays off,
   its stock Omarchy version keeps working, and you get one notification naming
   it. If the taskbar itself fails, you get the stock bar with the rest of XP.
+  The notification, lock, polkit and idle parts fall back as soon as a stock
+  file they copy changes at all, and the test also checks, by name, that the
+  stock members the XP code reads still exist (a member reached by a changed
+  parent depth needs the `--runtime` scan). `xp-compat-test --runtime` lists any
+  warning the running shell has logged from an XP part (the installer runs it
+  at the end).
 - **Omarchy 5:** a new port, not promised.
 - **Hyprland:** the XP title bars are hyprbars with XP's caption buttons,
   built in your account for the exact Hyprland you run (0.56.x today; the
   installer checks the headers match). After a Hyprland update the build
   repeats by itself at your next login (or `omarchy update`, or the next
-  switch to an XP theme), in the background; until then windows have plain
-  title bars. If a rebuild fails you get one notification and the log is
+  switch to an XP theme), in the background; until then windows have no
+  title bars. The plugin is loaded as `xpbars`, so it never meets Omarchy's
+  own floating-window title bars; those stay off while XP is on, and every
+  window has exactly one title bar. If a rebuild fails you get one notification and the log is
   `~/.local/state/omarchy/xp/hyprbars-build.log`. By hand:
   `~/.config/omarchy/xp/hyprbars/build && hyprctl reload`. The AUR
   `hyprland-plugin-hyprbars` is not used.
