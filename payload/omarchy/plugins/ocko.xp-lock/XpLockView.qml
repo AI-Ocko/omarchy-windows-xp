@@ -32,11 +32,17 @@ import "../../xp/qml"
 // The art is assets/graphics/logon/<id>.png (bin/xp-taskbar-art). If it is
 // not there, the stock LockView is shown instead: never a lock without a
 // password field, and never two.
+// XP: the background is always drawn from the XP logon art and colours, never
+// current/background, so a video wallpaper can never reach an Image here; the
+// stock fallback shows 4.5's poster still (videoPosterPath) for a video.
 Item {
   id: root
 
   // ---- the stock LockView interface (Service.qml binds these)
   property string backgroundPath: ""
+  // XP: 4.5.0 inputs (Service.qml binds both; a missing one fails the service).
+  property string videoPosterPath: ""
+  property bool fingerprintUnavailable: false
   property int backgroundVersion: 0
   property bool fingerprintConfigured: false
   property bool authenticatingPassword: false
@@ -61,6 +67,22 @@ Item {
     passwordTextEdited("")
   }
 
+  // XP: 4.5.0 LockView.dropsAutoRepeat. Waking a DPMS-blanked display can stall
+  // the compositor, so the wake key's auto-repeat would flood the field (and run
+  // into faillock); only holding Backspace/Delete to clear stays useful.
+  function dropsAutoRepeat(key) {
+    return key !== Qt.Key_Backspace && key !== Qt.Key_Delete
+  }
+
+  // XP: 4.5.0 LockView.restorePasswordFocus. A VT switch (forced around every
+  // suspend on NVIDIA) drops the field's focus and nothing gives it back. The
+  // wrong-password balloon leaves focus in the field, so the field is always the
+  // target. The stock fallback restores its own.
+  function restorePasswordFocus() {
+    if (!xpReady || !inputEnabled) return
+    if (passwordInput.enabled && !passwordInput.activeFocus) forcePasswordFocus()
+  }
+
   function syncPasswordText() {
     if (!xpReady || passwordInput.text === passwordText) return
     syncingPasswordText = true
@@ -72,6 +94,8 @@ Item {
   onInputEnabledChanged: {
     if (inputEnabled) Qt.callLater(forcePasswordFocus)
   }
+  // XP: 4.5.0 focus restore after suspend / VT switch.
+  Window.onActiveFocusItemChanged: Qt.callLater(restorePasswordFocus)
   Component.onCompleted: {
     syncPasswordText()
     if (inputEnabled) Qt.callLater(forcePasswordFocus)
@@ -138,8 +162,10 @@ Item {
     active: !root.xpReady
     sourceComponent: LockView {
       backgroundPath: root.backgroundPath
+      videoPosterPath: root.videoPosterPath  // XP: 4.5.0 pass-through
       backgroundVersion: root.backgroundVersion
       fingerprintConfigured: root.fingerprintConfigured
+      fingerprintUnavailable: root.fingerprintUnavailable  // XP: 4.5.0 pass-through
       authenticatingPassword: root.authenticatingPassword
       failureMessage: root.failureMessage
       failedAttempts: root.failedAttempts
@@ -159,6 +185,10 @@ Item {
     anchors.fill: parent
     visible: root.xpReady
     color: root.field
+    // XP: the Windows Welcome screen is not mirrored for right-to-left languages
+    // (4.5.0 mirrors the lock surface; the stock fallback still mirrors).
+    LayoutMirroring.enabled: false
+    LayoutMirroring.childrenInherit: true
 
     readonly property real topH: root.rp(80)
     // divider + padding + the 26 rp power button + padding
@@ -283,6 +313,21 @@ Item {
         color: root.ink
         font.family: "Arial"
         font.pixelSize: root.pt(14)
+      }
+      // XP: 4.5.0 passes fingerprintConfigured also while the reader is
+      // unreachable; then say so instead of inviting touches.
+      Text {
+        width: parent.width
+        visible: root.fingerprintConfigured && root.fingerprintUnavailable
+        topPadding: root.rp(8)
+        rightPadding: root.rp(40)
+        horizontalAlignment: Text.AlignRight
+        wrapMode: Text.WordWrap
+        text: "The fingerprint reader is not available.\nUse your password."
+        color: "#FFD5D5"
+        font.family: "Arial"
+        font.pixelSize: root.pt(10)
+        font.italic: true
       }
     }
 
@@ -409,6 +454,11 @@ Item {
               Keys.onPressed: function(event) {
                 root.wakeRequested()
                 root.hintOpen = false
+                // XP: 4.5.0 auto-repeat drop.
+                if (event.isAutoRepeat && root.dropsAutoRepeat(event.key)) {
+                  event.accepted = true
+                  return
+                }
                 if (event.key === Qt.Key_Escape || (event.modifiers & Qt.ControlModifier && event.key === Qt.Key_U)) {
                   root.passwordTextEdited("")
                   event.accepted = true
@@ -418,11 +468,12 @@ Item {
           }
 
           // Fingerprint hint, where XP put its keyboard-layout indicator.
+          // XP: crossed out (4.5.0's glyph) while the reader is unavailable.
           Text {
             visible: root.fingerprintConfigured
             anchors.verticalCenter: parent.verticalCenter
-            text: "󰈷"
-            color: "white"
+            text: root.fingerprintUnavailable ? "󰺱" : "󰈷"
+            color: root.fingerprintUnavailable ? "#FFD5D5" : "white"
             font.family: Style.font.family
             font.pixelSize: root.pt(14)
           }

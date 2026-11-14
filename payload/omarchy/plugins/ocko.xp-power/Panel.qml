@@ -1,10 +1,12 @@
 // ocko.xp-power: omarchy.power for the XP notification area (Windows XP
-// theme only; see omarchy/xp/bin/xp-mode). Lines 8-299 are
-// /usr/share/omarchy/shell/plugins/panels/power/Panel.qml (Omarchy 4.0.6,
-// sha256 8e7b6c32c2bda2069a03a04d4d71d6a82aa8aa435bfba0b81782a51d3195a848,
-// lines 1-292) verbatim: the logic and the bar button. The card below them is
-// rebuilt as XP's Power Options Properties (XpPower.qml).
-// Re-diff the logic against a newer Omarchy: diff <(sed -n 8,299p Panel.qml) <(sed -n 1,292p <stock>)
+// theme only; see omarchy/xp/bin/xp-mode). Lines 10-310 are
+// /usr/share/omarchy/shell/plugins/panels/power/Panel.qml (Omarchy 4.5.0,
+// sha256 145cd9632d8caa3a9b390b27cb6e7382b2ccb83610ae4bda04a2755c52a75068,
+// lines 1-300): the logic and the bar button, with three lines marked "XP:"
+// (the phrase fade's target). The card below them is rebuilt as XP's Power
+// Options Properties (XpPower.qml).
+// Re-diff the logic against a newer Omarchy:
+// diff <(sed -n 10,310p Panel.qml | grep -v '// XP: the root stub' | sed 's|  // XP:.*||') <(sed -n 1,300p <stock>)
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -62,7 +64,7 @@ Panel {
 
   function modeLabel() {
     var device = UPower.displayDevice
-    return Model.modeLabel(device, root.discharging, upowerStates())
+    return Model.modeLabel(device, root.discharging, upowerStates(), Commons.I18n.t)
   }
 
   function profileIcon(name) {
@@ -102,26 +104,26 @@ Panel {
   // Cute agent-flavored phrases shown in the hero status line, rotated on a
   // timer so the panel feels alive when current is flowing (either direction).
   readonly property var chargingPhrases: [
-    "Pumping power",
-    "Injecting electrons",
-    "Pouring juice",
-    "Amassing watts",
-    "Hoarding joules",
-    "Sucking volts",
-    "Topping reserves",
-    "Soaking amps",
-    "Inhaling kilowatts"
+    Commons.I18n.t("power.chargingPhrase1"),
+    Commons.I18n.t("power.chargingPhrase2"),
+    Commons.I18n.t("power.chargingPhrase3"),
+    Commons.I18n.t("power.chargingPhrase4"),
+    Commons.I18n.t("power.chargingPhrase5"),
+    Commons.I18n.t("power.chargingPhrase6"),
+    Commons.I18n.t("power.chargingPhrase7"),
+    Commons.I18n.t("power.chargingPhrase8"),
+    Commons.I18n.t("power.chargingPhrase9")
   ]
   readonly property var onBatteryPhrases: [
-    "Slurping power",
-    "Spending joules",
-    "Draining watts",
-    "Burning electrons",
-    "Sipping juice",
-    "Spending coulombs",
-    "Bleeding amps",
-    "Guzzling volts",
-    "Munching reserves"
+    Commons.I18n.t("power.dischargingPhrase1"),
+    Commons.I18n.t("power.dischargingPhrase2"),
+    Commons.I18n.t("power.dischargingPhrase3"),
+    Commons.I18n.t("power.dischargingPhrase4"),
+    Commons.I18n.t("power.dischargingPhrase5"),
+    Commons.I18n.t("power.dischargingPhrase6"),
+    Commons.I18n.t("power.dischargingPhrase7"),
+    Commons.I18n.t("power.dischargingPhrase8"),
+    Commons.I18n.t("power.dischargingPhrase9")
   ]
   property int phraseIndex: 0
 
@@ -134,8 +136,14 @@ Panel {
   }
   readonly property bool rotatingPhrases: activePhrases.length > 0
 
+  // The battery script's readings in the current language's digits; the
+  // time field already comes translated, so it is shown as it arrives.
+  function reading(raw) {
+    return Model.localizeReading(raw, Commons.I18n.formatNumber)
+  }
+
   readonly property string heroStatusText: {
-    if (fullyCharged) return "Fully charged"
+    if (fullyCharged) return Commons.I18n.t("power.fullyCharged")
     if (rotatingPhrases) return activePhrases[phraseIndex % activePhrases.length]
     return modeLabel()
   }
@@ -182,7 +190,7 @@ Panel {
     if (root.bar && root.bar.shell) root.bar.shell.updateEntryInline(root.moduleName, root.settings)
   }
 
-  IpcHandler {
+  ShellIpc {
     target: "omarchy.power"
 
     function open() { root.open() }
@@ -196,7 +204,10 @@ Panel {
   onOpenedChanged: {
     if (opened) {
       if (!batteryPresent) {
-        close()
+        // Deferred: closing here writes the very property whose change
+        // is being notified, which QML reports as a binding loop for
+        // Panel.opened on every open attempt without a battery.
+        Qt.callLater(function() { root.close() })
         return
       }
 
@@ -253,8 +264,8 @@ Panel {
   SequentialAnimation {
     id: phraseSwap
     PropertyAnimation {
-      target: heroStatus; property: "opacity"
-      to: 0.0; duration: 180; easing.type: Easing.OutQuad
+      target: panel.loadedContent ? panel.loadedContent.heroStatus : heroStatus; property: "opacity"  // XP: was : null (our eager card leaves loadedContent null)
+      to: 0.0; duration: Style.duration(150); easing.type: Easing.OutCubic
     }
     ScriptAction {
       script: {
@@ -263,8 +274,8 @@ Panel {
       }
     }
     PropertyAnimation {
-      target: heroStatus; property: "opacity"
-      to: 1.0; duration: 260; easing.type: Easing.InQuad
+      target: panel.loadedContent ? panel.loadedContent.heroStatus : heroStatus; property: "opacity"  // XP: was : null (our eager card leaves loadedContent null)
+      to: 1.0; duration: Style.duration(200); easing.type: Easing.OutCubic
     }
   }
 
@@ -276,7 +287,8 @@ Panel {
     function onRotatingPhrasesChanged() {
       if (!root.rotatingPhrases) {
         phraseSwap.stop()
-        heroStatus.opacity = 1.0
+        if (panel.loadedContent) panel.loadedContent.heroStatus.opacity = 1.0
+        else heroStatus.opacity = 1.0  // XP: the root stub below
       }
     }
   }
@@ -285,9 +297,8 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.showPercentage && !vertical
-      ? Math.round(root.batteryFraction * 100) + "% " + root.batteryIcon()
-      : root.batteryIcon()
+    text: root.batteryIcon()
+    labelText: root.showPercentage && !vertical ? Commons.I18n.formatNumber(Math.round(root.batteryFraction * 100)) + "%" : ""
     slotSize: Style.bar.iconSlot * (root.showPercentage && !vertical ? 2 : 1)
     tooltipText: ""
     onPressed: function(b) {
@@ -297,9 +308,9 @@ Panel {
     }
   }
 
-
   // =========================================================================
-  // XP UI (ocko.xp-power). Everything above is stock (see the header).
+  // XP UI (ocko.xp-power). Everything above is stock (see the header)
+  // apart from the lines marked "XP:".
   // Everything below replaces stock's card and its InfoPair components.
   // =========================================================================
 

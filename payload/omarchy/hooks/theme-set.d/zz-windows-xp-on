@@ -6,8 +6,9 @@
 # re-enables a stock plugin after XP has picked its clones. Leaving XP is
 # 00-windows-xp-off, which runs FIRST. omarchy-hook runs this as
 # `bash <file> <slug>`, with stdout discarded; the logic and its error log
-# live in xp-mode.
+# live in xp-mode. Any other theme: settle what leaving XP left pending (the
+# bar layout format, which depends on the bar this switch ended on).
 case $1 in
   windows-xp | windows-xp-*) exec "$HOME/.config/omarchy/xp/bin/xp-mode" on ;;
+  *) exec "$HOME/.config/omarchy/xp/bin/xp-mode" settle ;;
 esac
-exit 0

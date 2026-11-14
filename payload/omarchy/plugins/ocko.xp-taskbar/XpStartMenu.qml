@@ -476,6 +476,12 @@ Scope {
   // plays the sound.
   property var pendingAction: null
   readonly property string xpSound: home + "/.config/omarchy/xp/bin/xp-sound"
+  // 4.5 folded omarchy-system-{logout,reboot,shutdown} into `omarchy-system
+  // <action>`; 4.0 has only the old binaries.
+  function powerCmd(action) {
+    return "if command -v omarchy-system >/dev/null; then omarchy-system " + action
+      + "; else omarchy-system-" + action + "; fi"
+  }
   function systemAction(what, command) {
     pendingAction = { what: what, command: command }
     if (soundProc.running) return

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "ocko.xp-tray",
   "name": "Windows XP System Tray",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "ocko",
   "description": "omarchy.tray for the Windows XP notification area: XP context menus and Customize Notifications. Enabled only while an XP theme is active (omarchy/xp/bin/xp-mode); the stock widget stays enabled for other bars.",
   "kinds": [

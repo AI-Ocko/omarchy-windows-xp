@@ -1,6 +1,6 @@
 // ocko.xp-weather: omarchy.weather's bar button for the XP notification area
 // (Windows XP theme only; see omarchy/xp/bin/xp-mode). Copied unchanged from
-// /usr/share/omarchy/shell/plugins/panels/weather/BarWidget.qml, Omarchy 4.0.6,
+// /usr/share/omarchy/shell/plugins/panels/weather/BarWidget.qml, Omarchy 4.5.0,
 // sha256 ab3e32b97cf37847ff880a44013133eef9b9f04fe7258b692b30e7b24c6de4ca; it
 // loads this directory's Panel.qml, the XP Weather window.
 // Re-diff against a newer Omarchy: diff <(tail -n +8 BarWidget.qml) <stock file>

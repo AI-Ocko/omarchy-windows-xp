@@ -1,24 +1,24 @@
 {
-  "verified": "omarchy 4.0.6-1",
+  "verified": "omarchy 4.5.0-3",
   "stock": {
     "plugins/panels/weather/BarWidget.qml": "ab3e32b97cf37847ff880a44013133eef9b9f04fe7258b692b30e7b24c6de4ca",
-    "plugins/panels/weather/Model.js": "66d2aa5e81bfe12b1b1b53b499a09968bc9ad660d066bc60af9b18102e836d17",
-    "plugins/panels/weather/Panel.qml": "3a5b1345741f699e426ac08a2e4548a8bc0e0c4c82a54600402f716c20736de5"
+    "plugins/panels/weather/Model.js": "3e7dee236b287a6b58fdb1ef9597a2e0bdbe014473795147e47ed97ff78ce579",
+    "plugins/panels/weather/Panel.qml": "55dfe63d84b5421a5e3cad0f619bc3e0a5b3b495a972b44af0fe3a32269ed829"
   },
-  "shared": "1e73a03073c73d02a029ae323e4af4739975d96d259d586f8bba7525fb8cb1af",
-  "self": "e348ec3a76949de61ad1e4926cc36a63ee412646db23fc547a4dfb9e0b518fbf",
+  "shared": "a89a85796e5321e02fff44aa5f19687a0d862af09479626f3ef92352c4788823",
+  "self": "7fdc6b2ad1ecee2ea8b3fc3368eef87c6d621712d1cd37b3b1b921ba4f96beba",
   "external": [
-    "ElideRight",
+    "I18n",
     "Key_Down",
     "Key_Enter",
     "Key_Escape",
     "Key_Return",
     "Key_Up",
     "Keys",
+    "LongFormat",
     "MiddleButton",
     "PlainText",
     "RightButton",
-    "abs",
     "admin1",
     "apparent_temperature",
     "areaName",
@@ -27,37 +27,58 @@
     "current_condition",
     "env",
     "forceActiveFocus",
-    "formatDate",
     "getDay",
     "getTime",
     "hourly",
     "indexOf",
     "is_day",
     "join",
-    "locale",
-    "map",
     "nearest_area",
     "push",
     "relative_humidity_2m",
-    "reload",
     "replace",
     "resolvedUrl",
-    "restart",
     "round",
     "selectAll",
     "slice",
-    "split",
-    "stop",
+    "standaloneDayName",
     "temperature_2m",
     "temperature_2m_max",
     "temperature_2m_min",
     "test",
-    "time",
+    "toFixed",
     "toLowerCase",
     "toString",
     "trim",
     "weatherCode",
     "weather_code",
     "wind_speed_10m"
-  ]
+  ],
+  "stockMembers": {
+    "centerHoverRevealSuppressed": [
+      "Ui/PluginBarApi.qml",
+      "plugins/bar/Bar.qml"
+    ],
+    "date": [
+      "plugins/panels/clock/WallClock.qml"
+    ],
+    "loadedContent": [
+      "Ui/KeyboardPanel.qml"
+    ],
+    "loadedContentHeight": [
+      "Ui/KeyboardPanel.qml"
+    ],
+    "settings": [
+      "Ui/BarIndicator.qml",
+      "Ui/BarWidget.qml",
+      "Ui/Panel.qml",
+      "plugins/agents/Main.qml",
+      "plugins/bar/Bar.qml",
+      "plugins/panels/dropbox/Service.qml",
+      "plugins/panels/tailscale/Service.qml"
+    ],
+    "spacing": [
+      "Commons/Style.qml"
+    ]
+  }
 }

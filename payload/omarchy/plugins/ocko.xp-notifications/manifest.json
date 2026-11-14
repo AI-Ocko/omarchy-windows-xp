@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "ocko.xp-notifications",
   "name": "Windows XP balloon tips",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "ocko",
   "description": "omarchy.notifications with Windows XP balloon tips above the notification area. Enabled only while an XP theme is active (omarchy/xp/bin/xp-mode).",
   "kinds": [

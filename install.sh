@@ -226,6 +226,7 @@ say "Switch to Windows XP"
 cur=$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)
 scheme=windows-xp
 [[ $cur == windows-xp-* ]] && scheme=$cur
+switched=$(date '+%Y-%m-%d %H:%M:%S')
 run omarchy theme set "$scheme"
 
 # ---------------------------------------------------------------- boot splash
@@ -251,18 +252,32 @@ fi
 # ---------------------------------------------------------------- post-check
 say "Check"
 if ((DRY)); then
-  echo "(dry run) would print: xp-mode status, hyprctl configerrors, the compatibility table, Tahoma in fc-list, the live XP terminal font line"
+  echo "(dry run) would print: xp-mode status, hyprctl configerrors, the compatibility table, the shell's XP warnings, Tahoma in fc-list, the live XP terminal font line"
   exit 0
 fi
 "$XP/bin/xp-mode" status
 echo "hyprctl configerrors: $(hyprctl configerrors | tr -s '\n' ' ')"
-bars=$(grep -o '[^ ]*hyprbars[^ ]*\.so' "/proc/$(pidof Hyprland)/maps" 2>/dev/null | sort -u | tr '\n' ' ')
+# The theme switch reloads Hyprland asynchronously: give the plugin a moment.
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  bars=$(grep -o '[^ ]*\(hyprbars\|xpbars\|titlebars\)[^ ]*\.so' "/proc/$(pidof Hyprland)/maps" 2>/dev/null | sort -u | tr '\n' ' ')
+  [[ $bars == *"$HOME/.local/lib/hyprbars-xp/"* ]] && break
+  sleep 0.5
+done
 case $bars in
   *"$HOME/.local/lib/hyprbars-xp/"*) echo "title bars: XP caption buttons ($bars)" ;;
   "") warn "title bars: no hyprbars loaded in Hyprland" ;;
-  *) warn "title bars: Hyprland has $bars, not the XP build: plain buttons (see $HOME/.local/state/omarchy/xp/hyprbars-build.log)" ;;
+  *) warn "title bars: Hyprland has $bars, not the XP build: no XP title bars (see $HOME/.local/state/omarchy/xp/hyprbars-build.log)" ;;
 esac
 python3 "$XP/bin/xp-compat-test" | sed 's/^/  /'
+# What the shell logged about XP since the switch, once the plugins it
+# reloads have had a moment to load. A warning only: never fails the install.
+sleep 3
+runtime=$(python3 "$XP/bin/xp-compat-test" --runtime --since "$switched" 2>&1)
+case $? in
+  0) echo "shell log: no XP warnings" ;;
+  1) warn "the shell logged XP warnings since the switch:"; sed 's/^/  /' <<<"$runtime" >&2 ;;
+  *) warn "could not read the shell log: $runtime" ;;
+esac
 fc-list : family | grep -i -m1 tahoma || warn "Tahoma is not installed (fetch-assets.sh)"
 grep -m1 '^font=' "$HOME/.local/state/omarchy/current/theme/foot.ini"
 cat <<'EOF'

@@ -53,7 +53,7 @@ Item {
   readonly property int cardWidth: fingerprintMode ? cardHeight : Math.min(Style.space(312), Math.max(Style.space(260), panel.width - Style.gapsOut * 2))
 
   function authorizationLabel(message) {
-    return PolkitModel.authorizationLabel(message)
+    return message ? PolkitModel.authorizationLabel(message, I18n.t) : I18n.t("polkit.authenticationNeeded")
   }
 
   function loadPamConfig(raw) {
@@ -80,7 +80,7 @@ Item {
     var flow = polkitAgent.flow
     if (!flow) return
 
-    currentMessage = String(flow.message || "Authentication is needed...")
+    currentMessage = String(flow.message || "")
     currentPrompt = String(flow.inputPrompt || "")
     currentSupplementary = String(flow.supplementaryMessage || "")
     responseRequired = !!flow.isResponseRequired
@@ -155,9 +155,9 @@ Item {
 
   SequentialAnimation {
     id: shakeAnimation
-    NumberAnimation { target: root; property: "shakeOffset"; to: -8; duration: 35; easing.type: Easing.OutQuad }
-    NumberAnimation { target: root; property: "shakeOffset"; to: 8; duration: 50; easing.type: Easing.InOutQuad }
-    NumberAnimation { target: root; property: "shakeOffset"; to: 0; duration: 55; easing.type: Easing.OutQuad }
+    NumberAnimation { target: root; property: "shakeOffset"; to: -8; duration: Style.duration(35); easing.type: Easing.OutQuad }
+    NumberAnimation { target: root; property: "shakeOffset"; to: 8; duration: Style.duration(50); easing.type: Easing.InOutQuad }
+    NumberAnimation { target: root; property: "shakeOffset"; to: 0; duration: Style.duration(55); easing.type: Easing.OutQuad }
   }
   FileView {
     path: "/etc/pam.d/polkit-1"
@@ -221,7 +221,7 @@ Item {
   }
 
   // ======================================================== XP Run As dialog
-  // ocko.xp-polkit: everything above this line is omarchy.polkit 4.0.6
+  // ocko.xp-polkit: everything above this line is omarchy.polkit 4.5.0
   // unchanged (flow handling, PAM/fingerprint logic, cancel/submit). Only the
   // window is XP's "Run As" credential dialog, built from the shared chrome in
   // omarchy/xp/qml. Security is the stock dialog's: a full-screen Overlay
@@ -249,6 +249,10 @@ Item {
 
   PanelWindow {
     id: panel
+    // Right-to-left languages read this window mirrored.
+    Binding { target: panel.contentItem; property: "LayoutMirroring.enabled"; value: Commons.I18n.rightToLeft }
+    Binding { target: panel.contentItem; property: "LayoutMirroring.childrenInherit"; value: true }
+
     visible: root.dialogVisible
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
@@ -320,7 +324,9 @@ Item {
             Text {
               width: parent.width
               textFormat: Text.PlainText
-              text: root.currentMessage
+              // XP: 4.5 leaves currentMessage empty when polkit sends none;
+              // show stock's fallback text then.
+              text: root.currentMessage || I18n.t("polkit.authenticationNeeded")
               wrapMode: Text.Wrap
               color: "#000000"
               font.family: "Tahoma"
@@ -405,8 +411,16 @@ Item {
                   visible: !root.fingerprintMode
                   anchors.fill: parent
                   readOnly: root.submitted || root.errorFlash
+                  enabled: root.dialogVisible
                   placeholder: root.submitted ? "Checking..." : ""
                   echoMode: root.responseVisible ? TextInput.Normal : TextInput.Password
+                  // XP: Escape cancels from the field itself, as stock's does.
+                  Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Escape) {
+                      root.cancelRequest()
+                      event.accepted = true
+                    }
+                  }
                 }
               }
             }

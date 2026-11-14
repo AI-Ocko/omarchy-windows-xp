@@ -1,10 +1,10 @@
 // ocko.xp-monitor: omarchy.monitor for the XP notification area (Windows XP
-// theme only; see omarchy/xp/bin/xp-mode). Lines 9-499 are the logic of
-// /usr/share/omarchy/shell/plugins/panels/monitor/Panel.qml (Omarchy 4.0.6,
-// sha256 7ce864b8360625b008d5539adb555b3366513cdfd8fe57a93c64acef23d94bfa,
-// lines 1-490), with each change marked "XP:". The card below that is rebuilt
+// theme only; see omarchy/xp/bin/xp-mode). Lines 9-502 are the logic of
+// /usr/share/omarchy/shell/plugins/panels/monitor/Panel.qml (Omarchy 4.5.0,
+// sha256 b405184f103f1e82200a1aebe984f2c654804009af27cad58d056368e948afca,
+// lines 1-493), with each change marked "XP:". The card below that is rebuilt
 // as XP's Display Properties > Settings (XpDisplay.qml).
-// Re-diff the logic against a newer Omarchy: diff <(sed -n 9,499p Panel.qml) <(sed -n 1,490p <stock>)
+// Re-diff the logic against a newer Omarchy: diff <(sed -n 9,502p Panel.qml | grep -v '// XP') <(sed -n 1,493p <stock>)
 
 import QtQuick
 import QtQuick.Controls
@@ -197,6 +197,7 @@ Panel {
   // taller than its allotted height (lots of displays). Mirrors audio's
   // ensureCursorVisible helper.
   function ensureCursorVisible(item) {
+    var scrollArea = panel.loadedContent ? panel.loadedContent.scrollArea : null
     if (!item || !scrollArea) return
     var flick = scrollArea.contentItem
     if (!flick || flick.contentY === undefined) return
@@ -227,7 +228,7 @@ Panel {
     })
   }
 
-  IpcHandler {
+  ShellIpc {
     target: "omarchy.monitor"
 
     function brightness(percent: string): string { return root.brightnessIpc(percent) }
@@ -297,7 +298,7 @@ Panel {
   // span ~10–20 points so casual tweaks change the label, while small
   // nudges within one band don't.
   function brightnessName(percent) {
-    return Model.brightnessName(percent)
+    return Model.brightnessName(percent, Commons.I18n.t)
   }
 
   function updateDisplays(displaysJson) {
@@ -313,9 +314,11 @@ Panel {
     // hyprctl keyword is rejected under the Lua config ("non-legacy parsers"),
     // so drive the monitor through the hl.monitor eval API instead.
     var output = '"' + name.replace(/[\\"]/g, "\\$&") + '"'
+    // hl.monitor updates the existing rule. Keep its mode, position and scale
+    // when bringing the display back.
     var expr = enabled
       ? 'hl.monitor({ output = ' + output + ', disabled = true })'
-      : 'hl.monitor({ output = ' + output + ', disabled = false, mode = "preferred", position = "auto", scale = "auto" })'
+      : 'hl.monitor({ output = ' + output + ', disabled = false })'
     actionProc.command = ["hyprctl", "eval", expr]
     if (!actionProc.running) actionProc.running = true
   }
@@ -503,9 +506,9 @@ Panel {
   // page itself is XpDisplay.qml; keys are stock's, unchanged.
   // =========================================================================
 
-  // Stock's ensureCursorVisible() reads scrollArea; the XP page never
-  // scrolls, so it finds null and returns.
-  readonly property Item scrollArea: null
+  // XP: stock's ensureCursorVisible() reads panel.loadedContent.scrollArea,
+  // which is null with this eager card (the XP page never scrolls), so it
+  // returns; the 4.0.6 root scrollArea stub is no longer needed.
 
   function xpBareCard(item) {
     var card = item && item.parent ? item.parent.parent : null
