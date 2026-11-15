@@ -9,12 +9,10 @@ _xp_theme=
 if [[ $_xp_theme == windows-xp || $_xp_theme == windows-xp-* ]]; then
   export STARSHIP_CONFIG=$HOME/.config/omarchy/xp/starship.toml
 
-  # cmd.exe's path for the prompt (see omarchy/xp/starship.toml for why bash
-  # does this): the real path with backslashes on a C: drive, so
-  # /home/$USER/foo -> C:\home\$USER\foo and /usr -> C:\usr.
+  # The prompt's path is the drive root alone, `C:\>`, whatever the working
+  # directory (omarchy/xp/starship.toml prints $XP_PROMPT_PATH).
   _xp_prompt_path() {
-    local p=${PWD#/}
-    export XP_PROMPT_PATH="C:\\${p//\//\\}"
+    export XP_PROMPT_PATH='C:\'
     # Re-asserted every prompt: ~/.bashrc lines after this hook (another
     # rice's starship switcher, say) may export their own STARSHIP_CONFIG,
     # and starship reads it per prompt, so the last export would win.
